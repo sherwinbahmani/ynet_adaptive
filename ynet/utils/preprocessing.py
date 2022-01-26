@@ -4,6 +4,57 @@ import os
 import cv2
 from copy import deepcopy
 
+def load_SDD_small(path):
+	'''
+	Loads data from Stanford Drone Dataset. Makes the following preprocessing:
+	-filter out unnecessary columns (e.g. generated, label, occluded)
+	-filter out non-pedestrian
+	-filter out tracks which are lost
+	-calculate middle point of bounding box
+	-makes new unique, scene-dependent ID (column 'metaId') since original dataset resets id for each scene
+	-add scene name to column for visualization
+	-output has columns=['trackId', 'frame', 'x', 'y', 'sceneId', 'metaId']
+
+	before data needs to be in the following folder structure
+	data/SDD/mode               mode can be 'train','val','test'
+	|-bookstore_0
+		|-annotations.txt
+		|-reference.jpg
+	|-scene_name
+		|-...
+	:param path: path to folder, default is 'data/SDD'
+	:param mode: dataset split - options['train', 'test', 'val']
+	:return: DataFrame containing all trajectories from dataset split
+	'''
+	data_path = os.path.join(path, "annotations")
+	scenes_main = os.listdir(data_path)
+	SDD_cols = ['trackId', 'xmin', 'ymin', 'xmax', 'ymax', 'frame', 'lost', 'occluded', 'generated', 'label']
+	data = []
+	for scene_main in sorted(scenes_main):
+		scene_main_path = os.path.join(data_path, scene_main)
+		for scene_sub in sorted(os.listdir(scene_main_path)):
+			scene_path = os.path.join(scene_main_path, scene_sub)
+			annot_path = os.path.join(scene_path, 'annotations.txt')
+			scene_df = pd.read_csv(annot_path, header=0, names=SDD_cols, delimiter=' ')
+			# Calculate center point of bounding box
+			scene_df['x'] = (scene_df['xmax'] + scene_df['xmin']) / 2
+			scene_df['y'] = (scene_df['ymax'] + scene_df['ymin']) / 2
+			# scene_df = scene_df[scene_df['label'] == 'Pedestrian']  # drop non-pedestrians
+			scene_df = scene_df[scene_df['lost'] == 0]  # drop lost samples
+			scene_df = scene_df.drop(columns=['xmin', 'xmax', 'ymin', 'ymax', 'occluded', 'generated', 'lost'])
+			scene_df['sceneId'] = f"{scene_main}_{scene_sub.split('video')[1]}"
+			# new unique id by combining scene_id and track_id
+			scene_df['rec&trackId'] = [recId + '_' + str(trackId).zfill(4) for recId, trackId in
+									zip(scene_df.sceneId, scene_df.trackId)]
+			data.append(scene_df)
+	data = pd.concat(data, ignore_index=True)
+	rec_trackId2metaId = {}
+	for i, j in enumerate(data['rec&trackId'].unique()):
+		rec_trackId2metaId[j] = i
+	data['metaId'] = [rec_trackId2metaId[i] for i in data['rec&trackId']]
+	data = data.drop(columns=['rec&trackId'])
+	return data
+
 
 def load_SDD(path='data/SDD/', mode='train'):
 	'''
@@ -159,6 +210,38 @@ def split_fragmented(df):
 	df = df.drop(columns='newMetaId')
 	return df
 
+def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train', pickle_path=None,
+							  train_labels=[], test_labels=[]):
+	"""
+	Helper function to aggregate loading and preprocessing in one function. Preprocessing contains:
+	- Split fragmented trajectories
+	- Downsample fps
+	- Filter short trajectories below threshold=window_size
+	- Sliding window with window_size and stride
+	:param step (int): downsample factor, step=30 means 1fps and step=12 means 2.5fps on SDD
+	:param window_size (int): Timesteps for one window
+	:param stride (int): How many timesteps to stride in windowing. If stride=window_size then there is no overlap
+	:param path (str): Path to SDD directory (not subdirectory, which is contained in mode)
+	:param mode (str): Which dataset split, options=['train', 'val', 'test']
+	:param pickle_path (str): Alternative to path+mode, if there already is a pickled version of the raw SDD as df
+	:return pd.df: DataFrame containing the preprocessed data
+	"""
+	if pickle_path is not None:
+		df = pd.read_pickle(pickle_path)
+	else:
+		df = load_SDD_small(path=path)
+	df = split_fragmented(df)  # split track if frame is not continuous
+	df = downsample(df, step=step)
+	df = filter_short_trajectories(df, threshold=window_size)
+	df = sliding_window(df, window_size=window_size, stride=stride)
+	df_train = filter_labels(df, train_labels)
+	if test_labels == []:
+		df_train, df_test = split_df(df_train)
+	else:
+		df_test = filter_labels(df, test_labels)
+	df_train = df_train.drop(columns=['label'])
+	df_test= df_test.drop(columns=['label'])
+	return df_train, df_test
 
 def load_and_window_SDD(step, window_size, stride, path=None, mode='train', pickle_path=None):
 	"""
@@ -185,6 +268,18 @@ def load_and_window_SDD(step, window_size, stride, path=None, mode='train', pick
 	df = sliding_window(df, window_size=window_size, stride=stride)
 
 	return df
+
+def filter_labels(df, labels):
+	df = df[np.array([df['label'].values == label for label in labels]).any(axis=0)]
+	return df
+
+def split_df(df, ratio=0.2):
+	meta_ids = np.unique(df["metaId"].values)
+	mask = np.ones_like(meta_ids).astype(bool)
+	mask[:int(len(meta_ids)*ratio)] = False
+	np.random.shuffle(mask)
+	split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
+	return df[split_mask], df[split_mask == False]
 
 
 def rot(df, image, k=1):
