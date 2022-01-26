@@ -8,10 +8,10 @@ CONFIG_FILE_PATH = 'config/sdd_trajnet.yaml'  # yaml config file containing all 
 EXPERIMENT_NAME = 'sdd_trajnet'  # arbitrary name for this experiment
 DATASET_NAME = 'sdd'
 
-TRAIN_DATA_PATH = 'data/SDD/train_trajnet.pkl'
-TRAIN_IMAGE_PATH = 'data/SDD/train'
-VAL_DATA_PATH = 'data/SDD/test_trajnet.pkl'
-VAL_IMAGE_PATH = 'data/SDD/test'
+TRAIN_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train_trajnet.pkl'
+TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train'
+VAL_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test_trajnet.pkl'
+VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test'
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps
 NUM_GOALS = 20  # K_e
