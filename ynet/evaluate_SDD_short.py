@@ -4,6 +4,9 @@ import yaml
 import argparse
 import torch
 from model import YNet
+import time
+
+tic = time.time()
 
 FOLDERNAME = './'
 
@@ -29,3 +32,6 @@ model.load(f'{FOLDERNAME}/pretrained_models/{experiment_name}_weights.pt')
 model.evaluate(df_test, params, image_path=TEST_IMAGE_PATH,
                batch_size=BATCH_SIZE, rounds=ROUNDS, 
                num_goals=NUM_GOALS, num_traj=NUM_TRAJ, device=None, dataset_name=DATASET_NAME)
+
+toc = time.time()
+print(time.strftime("%Hh%Mm%Ss", time.gmtime(toc - tic)))

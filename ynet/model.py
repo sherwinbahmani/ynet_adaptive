@@ -400,7 +400,7 @@ class YNet:
 										  obs_len=obs_len, batch_size=batch_size,
 										  device=device, input_template=input_template,
 										  waypoints=params['waypoints'], resize=params['resize'],
-										  temperature=params['temperature'], use_TTST=False,
+										  temperature=params['temperature'], use_TTST=params['use_TTST'],
 										  use_CWS=True if len(params['waypoints']) > 1 else False,
 										  rel_thresh=params['rel_threshold'], CWS_params=params['CWS_params'],
 										  dataset_name=dataset_name, homo_mat=self.homo_mat, mode='test')
