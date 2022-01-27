@@ -394,6 +394,7 @@ class YNet:
 		self.eval_ADE = []
 		self.eval_FDE = []
 
+		print("TTST setting:", params['use_TTST'])
 		print('Start testing')
 		for e in tqdm(range(rounds), desc='Round'):
 			test_ADE, test_FDE = evaluate(model, test_loader, test_images, num_goals, num_traj,
