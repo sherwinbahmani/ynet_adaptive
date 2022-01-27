@@ -107,6 +107,9 @@ def load_SDD(path='data/SDD/', mode='train'):
 	data = data.drop(columns=['rec&trackId'])
 	return data
 
+def compute_velocity_dist(df):
+	pass
+
 
 def mask_step(x, step):
 	"""
@@ -211,7 +214,7 @@ def split_fragmented(df):
 	return df
 
 def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train', pickle_path=None,
-							  train_labels=[], test_labels=[]):
+							  train_labels=[], test_labels=[], test_per=1.0, max_train_agents=10000):
 	"""
 	Helper function to aggregate loading and preprocessing in one function. Preprocessing contains:
 	- Split fragmented trajectories
@@ -235,12 +238,15 @@ def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train'
 	df = filter_short_trajectories(df, threshold=window_size)
 	df = sliding_window(df, window_size=window_size, stride=stride)
 	df_train = filter_labels(df, train_labels)
-	if test_labels == []:
+	if test_labels == train_labels:
 		df_train, df_test = split_df(df_train)
 	else:
 		df_test = filter_labels(df, test_labels)
+	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents)
 	df_train = df_train.drop(columns=['label'])
 	df_test= df_test.drop(columns=['label'])
+	# compute_velocity_dist(df_train)
+	# compute_velocity_dist(df_test)
 	return df_train, df_test
 
 def load_and_window_SDD(step, window_size, stride, path=None, mode='train', pickle_path=None):
@@ -273,7 +279,31 @@ def filter_labels(df, labels):
 	df = df[np.array([df['label'].values == label for label in labels]).any(axis=0)]
 	return df
 
-def split_df(df, ratio=0.2):
+def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents):
+	labels = np.unique(df_train["label"].values)
+	# Filter based on the least occuring label across all scenes
+	min_num = min([len(np.unique(df_train[df_train["label"] == label]["metaId"].values))
+				   for label in labels] + [max_train_agents])
+	meta_ids_keep = []
+	for label in labels:
+		meta_ids = np.unique(df_train[df_train["label"] == label]["metaId"].values)
+		mask = np.zeros_like(meta_ids).astype(bool)
+		mask[:min_num] = True
+		np.random.shuffle(mask)
+		meta_ids_keep.append(meta_ids[mask])
+	meta_ids_keep = np.array(meta_ids_keep).reshape(-1)
+	df_train = df_train[np.array([df_train["metaId"] == meta_id for meta_id in meta_ids_keep]).any(axis=0)]
+	# Filter test set based on given percentage
+	meta_ids = np.unique(df_test["metaId"].values)
+	mask = np.zeros_like(meta_ids).astype(bool)
+	min_num_test = min(int(min_num * test_per), len(meta_ids))
+	mask[:min_num_test] = True
+	np.random.shuffle(mask)
+	df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)]
+	print(f"{min_num} agents for each training class, {min_num_test} agents for test class")
+	return df_train, df_test
+
+def split_df(df, ratio=0.2, max_train_agents=10000):
 	meta_ids = np.unique(df["metaId"].values)
 	mask = np.ones_like(meta_ids).astype(bool)
 	mask[:int(len(meta_ids)*ratio)] = False

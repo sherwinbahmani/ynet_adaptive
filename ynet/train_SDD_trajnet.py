@@ -9,11 +9,13 @@ from utils.preprocessing import load_and_window_SDD_small, load_SDD_small
 USE_RAW_SMALL = True # Read from raw dataset instead of pickle
 SDD_SMALL_PATH = "/fastdata/vilab07/sdd/sdd_small"
 # Labels list: ['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater']
-TRAIN_LABELS = ['Pedestrian']
-TEST_LABELS = []
+TRAIN_LABELS = ['Pedestrian', 'Biker', 'Car']
+TEST_LABELS = ['Skater']
 STEP = 12 #STEP = 12 (2.5 FPS) STEP = 30 () 1 FPS
 MIN_NUM_STEPS_SEQ = 20
-STRIDE = 8+12 #timesteps to move from one trajectory to the next one
+STRIDE = 8+12 # timesteps to move from one trajectory to the next one
+TEST_PER = 0.3 # percentage for setting number of testing agents based on number of training agents per class
+MAX_TRAIN_AGENTS = 10000 #202 # further constrain the number of training agents per class
 
 # Orig block
 CONFIG_FILE_PATH = 'config/sdd_trajnet.yaml'  # yaml config file containing all the hyperparameters
@@ -44,7 +46,8 @@ if USE_RAW_SMALL:
     # df_train = load_SDD_small(path=SDD_SMALL_PATH)
     df_train, df_val = load_and_window_SDD_small(path=SDD_SMALL_PATH, step=STEP,
                                                  window_size=MIN_NUM_STEPS_SEQ, stride=STRIDE,
-                                                 train_labels=TRAIN_LABELS, test_labels=TEST_LABELS)
+                                                 train_labels=TRAIN_LABELS, test_labels=TEST_LABELS,
+                                                 test_per=TEST_PER, max_train_agents=MAX_TRAIN_AGENTS)
 else:
     df_train = pd.read_pickle(TRAIN_DATA_PATH)
     df_val = pd.read_pickle(VAL_DATA_PATH)

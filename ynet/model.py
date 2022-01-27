@@ -323,7 +323,7 @@ class YNet:
 										temperature=params['temperature'], use_TTST=False,
 										use_CWS=False, dataset_name=dataset_name,
 										homo_mat=self.homo_mat, mode='val')
-			print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
+			# print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
 			self.val_ADE.append(val_ADE)
 			self.val_FDE.append(val_FDE)
 
@@ -400,7 +400,7 @@ class YNet:
 										  obs_len=obs_len, batch_size=batch_size,
 										  device=device, input_template=input_template,
 										  waypoints=params['waypoints'], resize=params['resize'],
-										  temperature=params['temperature'], use_TTST=True,
+										  temperature=params['temperature'], use_TTST=params['use_TTST'],
 										  use_CWS=True if len(params['waypoints']) > 1 else False,
 										  rel_thresh=params['rel_threshold'], CWS_params=params['CWS_params'],
 										  dataset_name=dataset_name, homo_mat=self.homo_mat, mode='test')
