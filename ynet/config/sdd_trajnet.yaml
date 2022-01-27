@@ -37,7 +37,7 @@ use_features_only: False  # If True the segmentation model only uses the
 unfreeze: 150  # Unfreeze semantic segmentation model weights after this # of epochs
 
 # TTST
-use_TTST: True
+use_TTST: False
 rel_threshold: 0.01
 
 # CWS

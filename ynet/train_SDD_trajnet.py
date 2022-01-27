@@ -5,6 +5,8 @@ import torch
 from model import YNet
 from utils.preprocessing import load_and_window_SDD_small, load_SDD_small
 
+FOLDERNAME = './'
+
 # Custom block
 USE_RAW_SMALL = False # Read from raw dataset instead of pickle
 SDD_SMALL_PATH = "/fastdata/vilab07/sdd/sdd_small"
