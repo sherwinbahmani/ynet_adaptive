@@ -214,7 +214,8 @@ def split_fragmented(df):
 	return df
 
 def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train', pickle_path=None,
-							  train_labels=[], test_labels=[], test_per=1.0, max_train_agents=10000):
+							  train_labels=[], test_labels=[], test_per=1.0, max_train_agents=10000,
+							  train_set_ratio=1.0, test_on_train=False):
 	"""
 	Helper function to aggregate loading and preprocessing in one function. Preprocessing contains:
 	- Split fragmented trajectories
@@ -239,7 +240,7 @@ def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train'
 	df = sliding_window(df, window_size=window_size, stride=stride)
 	df_train = filter_labels(df, train_labels)
 	if test_labels == train_labels:
-		df_train, df_test = split_df(df_train)
+		df_train, df_test = split_df(df_train, ratio=train_set_ratio, test_on_train=test_on_train)
 	else:
 		df_test = filter_labels(df, test_labels)
 	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents)
@@ -303,13 +304,16 @@ def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents):
 	print(f"{min_num} agents for each training class, {min_num_test} agents for test class")
 	return df_train, df_test
 
-def split_df(df, ratio=0.2, max_train_agents=10000):
+def split_df(df, ratio=1.0, test_on_train=False):
 	meta_ids = np.unique(df["metaId"].values)
 	mask = np.ones_like(meta_ids).astype(bool)
-	mask[:int(len(meta_ids)*ratio)] = False
+	mask[:int(len(meta_ids)*(1-ratio))] = False
 	np.random.shuffle(mask)
 	split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
-	return df[split_mask], df[split_mask == False]
+	if test_on_train:
+		return df, df[split_mask == False]
+	else:
+		return df[split_mask], df[split_mask == False]
 
 
 def rot(df, image, k=1):
