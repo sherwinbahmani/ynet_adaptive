@@ -6,7 +6,7 @@ from model import YNet
 from utils.preprocessing import load_and_window_SDD_small, load_SDD_small
 
 # Custom block
-USE_RAW_SMALL = True # Read from raw dataset instead of pickle
+USE_RAW_SMALL = False # Read from raw dataset instead of pickle
 SDD_SMALL_PATH = "/fastdata/vilab07/sdd/sdd_small"
 # Labels list: ['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater']
 TRAIN_LABELS = ['Pedestrian']
