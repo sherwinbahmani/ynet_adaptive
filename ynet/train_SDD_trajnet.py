@@ -12,17 +12,22 @@ SDD_SMALL_PATH = "/fastdata/vilab07/sdd/sdd_small"
 TRAIN_LABELS = ['Pedestrian']
 TEST_LABELS = []
 STEP = 12 #STEP = 12 (2.5 FPS) STEP = 30 () 1 FPS
-MIN_NUM_STEPS_SEQ = 8
+MIN_NUM_STEPS_SEQ = 20
 STRIDE = 8+12 #timesteps to move from one trajectory to the next one
 
 # Orig block
 CONFIG_FILE_PATH = 'config/sdd_trajnet.yaml'  # yaml config file containing all the hyperparameters
 EXPERIMENT_NAME = 'sdd_trajnet'  # arbitrary name for this experiment
 DATASET_NAME = 'sdd'
-TRAIN_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train_trajnet.pkl'
-TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train'
-VAL_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test_trajnet.pkl'
-VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test'
+if USE_RAW_SMALL:
+    TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/sdd_small/annotations'
+    VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/sdd_small/annotations'
+else:
+    TRAIN_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train_trajnet.pkl'
+    TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train'
+    VAL_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test_trajnet.pkl'
+    VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test'    
+
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps
 NUM_GOALS = 20  # K_e
@@ -48,4 +53,4 @@ model = YNet(obs_len=OBS_LEN, pred_len=PRED_LEN, params=params)
 
 model.train(df_train, df_val, params, train_image_path=TRAIN_IMAGE_PATH, val_image_path=VAL_IMAGE_PATH,
             experiment_name=EXPERIMENT_NAME, batch_size=BATCH_SIZE, num_goals=NUM_GOALS, num_traj=NUM_TRAJ, 
-            device=None, dataset_name=DATASET_NAME)
+            device=None, dataset_name=DATASET_NAME, use_raw_small=USE_RAW_SMALL)

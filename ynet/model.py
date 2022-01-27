@@ -216,7 +216,7 @@ class YNet:
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
-	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None):
+	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_small=False):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -261,10 +261,10 @@ class YNet:
 
 		# Load train images and augment train data and images
 		df_train, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
-											  seg_mask=seg_mask)
+											  seg_mask=seg_mask, use_raw_small=use_raw_small)
 
 		# Load val scene images
-		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name)
+		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name, use_raw_small=use_raw_small)
 
 		# Initialize dataloaders
 		train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)

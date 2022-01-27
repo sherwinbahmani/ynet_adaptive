@@ -343,7 +343,7 @@ def fliplr(df, image):
 	return xy, image
 
 
-def augment_data(data, image_path='data/SDD/train', images={}, image_file='reference.jpg', seg_mask=False):
+def augment_data(data, image_path='data/SDD/train', images={}, image_file='reference.jpg', seg_mask=False, use_raw_small=False):
 	'''
 	Perform data augmentation
 	:param data: Pandas df, needs x,y,metaId,sceneId columns
@@ -355,7 +355,11 @@ def augment_data(data, image_path='data/SDD/train', images={}, image_file='refer
 	'''
 	ks = [1, 2, 3]
 	for scene in data.sceneId.unique():
-		im_path = os.path.join(image_path, scene, image_file)
+		scene_name, scene_idx = scene.split("_")
+		if use_raw_small:
+			im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
+		else:
+			im_path = os.path.join(image_path, scene, image_file)
 		if seg_mask:
 			im = cv2.imread(im_path, 0)
 		else:
@@ -366,7 +370,10 @@ def augment_data(data, image_path='data/SDD/train', images={}, image_file='refer
 	for k in ks:
 		metaId_max = data['metaId'].max()
 		for scene in data_.sceneId.unique():
-			im_path = os.path.join(image_path, scene, image_file)
+			if use_raw_small:
+				im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
+			else:
+				im_path = os.path.join(image_path, scene, image_file)
 			if seg_mask:
 				im = cv2.imread(im_path, 0)
 			else:
@@ -491,13 +498,18 @@ def resize_and_pad_image(images, size, pad=2019):
 		images[key] = im
 
 
-def create_images_dict(data, image_path, image_file='reference.jpg'):
+def create_images_dict(data, image_path, image_file='reference.jpg', use_raw_small=False):
 	images = {}
 	for scene in data.sceneId.unique():
 		if image_file == 'oracle.png':
 			im = cv2.imread(os.path.join(image_path, scene, image_file), 0)
 		else:
-			im = cv2.imread(os.path.join(image_path, scene, image_file))
+			if use_raw_small:
+				scene_name, scene_idx = scene.split("_")
+				im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
+			else:
+				im_path = os.path.join(image_path, scene, image_file)
+			im = cv2.imread(im_path)
 		images[scene] = im
 	return images
 
