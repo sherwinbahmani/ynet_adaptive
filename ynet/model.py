@@ -394,13 +394,14 @@ class YNet:
 		self.eval_ADE = []
 		self.eval_FDE = []
 
+		print("TTST setting:", params['use_TTST'])
 		print('Start testing')
 		for e in tqdm(range(rounds), desc='Round'):
 			test_ADE, test_FDE = evaluate(model, test_loader, test_images, num_goals, num_traj,
 										  obs_len=obs_len, batch_size=batch_size,
 										  device=device, input_template=input_template,
 										  waypoints=params['waypoints'], resize=params['resize'],
-										  temperature=params['temperature'], use_TTST=True,
+										  temperature=params['temperature'], use_TTST=params['use_TTST'],
 										  use_CWS=True if len(params['waypoints']) > 1 else False,
 										  rel_thresh=params['rel_threshold'], CWS_params=params['CWS_params'],
 										  dataset_name=dataset_name, homo_mat=self.homo_mat, mode='test')
@@ -417,30 +418,4 @@ class YNet:
 
 	def save(self, path):
 		torch.save(self.model.state_dict(), path)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
