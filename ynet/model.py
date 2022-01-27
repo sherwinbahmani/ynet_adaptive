@@ -348,6 +348,7 @@ class YNet:
 
 		if device is None:
 			device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+			print('Working on GPU: ', torch.cuda.is_available())
 
 		obs_len = self.obs_len
 		pred_len = self.pred_len
@@ -395,7 +396,7 @@ class YNet:
 		self.eval_FDE = []
 
 		print('Start testing')
-		for e in tqdm(range(rounds), desc='Round'):
+		for e in range(rounds): # tqdm(, desc='Round'):
 			test_ADE, test_FDE = evaluate(model, test_loader, test_images, num_goals, num_traj,
 										  obs_len=obs_len, batch_size=batch_size,
 										  device=device, input_template=input_template,

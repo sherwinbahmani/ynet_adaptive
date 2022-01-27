@@ -3,6 +3,8 @@ import torch.nn as nn
 from utils.image_utils import get_patch, sampling, image2world
 from utils.kmeans import kmeans
 
+from tqdm import tqdm
+
 
 def torch_multivariate_gaussian_heatmap(coordinates, H, W, dist, sigma_factor, ratio, device, rot=False):
 	"""
@@ -62,7 +64,7 @@ def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_
 	counter = 0
 	with torch.no_grad():
 		# outer loop, for loop over each scene as scenes have different image size and to calculate segmentation only once
-		for trajectory, meta, scene in val_loader:
+		for trajectory, meta, scene in tqdm(val_loader):
 			# Get scene image and apply semantic segmentation
 			scene_image = val_images[scene].to(device).unsqueeze(0)
 			scene_image = model.segmentation(scene_image)
