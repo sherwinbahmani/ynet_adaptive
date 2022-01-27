@@ -9,7 +9,7 @@ FOLDERNAME = './'
 
 # Custom block
 USE_RAW_SMALL = False # Read from raw dataset instead of pickle
-SDD_SMALL_PATH = "/fastdata/vilab07/sdd/sdd_small"
+SDD_SMALL_PATH = FOLDERNAME + "sdd/sdd_small"
 # Labels list: ['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater']
 TRAIN_LABELS = ['Pedestrian']
 TEST_LABELS = []
@@ -21,10 +21,10 @@ STRIDE = 8+12 #timesteps to move from one trajectory to the next one
 CONFIG_FILE_PATH = 'config/sdd_trajnet.yaml'  # yaml config file containing all the hyperparameters
 EXPERIMENT_NAME = 'sdd_trajnet'  # arbitrary name for this experiment
 DATASET_NAME = 'sdd'
-TRAIN_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train_trajnet.pkl'
-TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train'
-VAL_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test_trajnet.pkl'
-VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test'
+TRAIN_DATA_PATH = FOLDERNAME + 'data/SDD/train_trajnet.pkl'
+TRAIN_IMAGE_PATH = FOLDERNAME + 'data/SDD/train'
+VAL_DATA_PATH = FOLDERNAME + 'data/SDD/test_trajnet.pkl'
+VAL_IMAGE_PATH = FOLDERNAME + 'data/SDD/test'
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps
 NUM_GOALS = 20  # K_e
@@ -45,6 +45,11 @@ if USE_RAW_SMALL:
 else:
     df_train = pd.read_pickle(TRAIN_DATA_PATH)
     df_val = pd.read_pickle(VAL_DATA_PATH)
+
+####################################
+####################################
+
+# TODO:  replace the code below
 
 model = YNet(obs_len=OBS_LEN, pred_len=PRED_LEN, params=params)
 

@@ -4,14 +4,19 @@ import yaml
 import argparse
 import torch
 from model import YNet
+import time
+
+tic = time.time()
+
+FOLDERNAME = './'
 
 import os
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 CONFIG_FILE_PATH = 'config/sdd_trajnet.yaml'  # yaml config file containing all the hyperparameters
 DATASET_NAME = 'sdd'
-TEST_DATA_PATH = 'data/SDD/test_trajnet.pkl'
-TEST_IMAGE_PATH = 'data/SDD/test'  # only needed for YNet, PECNet ignores this value
+TEST_DATA_PATH = FOLDERNAME + 'data/SDD/test_trajnet.pkl'
+TEST_IMAGE_PATH = FOLDERNAME + 'data/SDD/test'  # only needed for YNet, PECNet ignores this value
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps
 NUM_GOALS = 20  # K_e
@@ -27,10 +32,10 @@ experiment_name = CONFIG_FILE_PATH.split('.yaml')[0].split('config/')[1]
 df_test = pd.read_pickle(TEST_DATA_PATH)
 print('Creating model')
 model = YNet(obs_len=OBS_LEN, pred_len=PRED_LEN, params=params)
-print('Loading model')
-model.load(f'pretrained_models/{experiment_name}_weights.pt')
-print('Evaluating model')
+model.load(f'{FOLDERNAME}/pretrained_models/{experiment_name}_weights.pt')
 model.evaluate(df_test, params, image_path=TEST_IMAGE_PATH,
                batch_size=BATCH_SIZE, rounds=ROUNDS, 
                num_goals=NUM_GOALS, num_traj=NUM_TRAJ, device=None, dataset_name=DATASET_NAME)
 
+toc = time.time()
+print(time.strftime("%Hh%Mm%Ss", time.gmtime(toc - tic)))
