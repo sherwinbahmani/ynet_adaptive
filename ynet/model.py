@@ -11,7 +11,7 @@ from utils.image_utils import create_gaussian_heatmap_template, create_dist_mat,
 	preprocess_image_for_segmentation, pad, resize
 from utils.dataloader import SceneDataset, scene_collate
 from test import evaluate
-from train import train
+from train import train, train_style_enc
 
 
 class StyleEncoder(nn.Module):
@@ -188,6 +188,8 @@ class YNetTorch(nn.Module):
 
 		self.softargmax_ = SoftArgmax2D(normalized_coordinates=False)
 
+		self.style_enc = StyleEncoder(in_channels=semantic_classes + obs_len, channels=encoder_channels)
+
 	def segmentation(self, image):
 		return self.semantic_segmentation(image)
 
@@ -204,6 +206,11 @@ class YNetTorch(nn.Module):
 	# Forward pass for feature encoder, returns list of feature maps
 	def pred_features(self, x):
 		features = self.encoder(x)
+		return features
+
+	# Forward pass for feature encoder, returns list of feature maps
+	def style_features(self, x):
+		features = self.style_enc(x)
 		return features
 
 	# Softmax for Image data as in dim=NxCxHxW, returns softmax image shape=NxCxHxW
@@ -456,3 +463,118 @@ class YNet:
 	def save(self, path):
 		torch.save(self.model.state_dict(), path)
 
+	def train_style_enc(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None):
+		"""
+		Train function
+		:param train_data: pd.df, train data
+		:param val_data: pd.df, val data
+		:param params: dictionary with training hyperparameters
+		:param train_image_path: str, filepath to train images
+		:param val_image_path: str, filepath to val images
+		:param experiment_name: str, arbitrary name to name weights file
+		:param batch_size: int, batch size
+		:param num_goals: int, number of goals per trajectory, K_e in paper
+		:param num_traj: int, number of trajectory per goal, K_a in paper
+		:param device: torch.device, if None -> 'cuda' if torch.cuda.is_available() else 'cpu'
+		:return:
+		"""
+		if device is None:
+			device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+		obs_len = self.obs_len
+		pred_len = self.pred_len
+		total_len = pred_len + obs_len
+
+		print('Preprocess data')
+		dataset_name = dataset_name.lower()
+		if dataset_name == 'sdd':
+			image_file_name = 'reference.jpg'
+		elif dataset_name == 'ind':
+			image_file_name = 'reference.png'
+		elif dataset_name == 'eth':
+			image_file_name = 'oracle.png'
+		else:
+			raise ValueError(f'{dataset_name} dataset is not supported')
+
+		# ETH/UCY specific: Homography matrix is needed to convert pixel to world coordinates
+		if dataset_name == 'eth':
+			self.homo_mat = {}
+			for scene in ['eth', 'hotel', 'students001', 'students003', 'uni_examples', 'zara1', 'zara2', 'zara3']:
+				self.homo_mat[scene] = torch.Tensor(np.loadtxt(f'data/eth_ucy/{scene}_H.txt')).to(device)
+			seg_mask = True
+		else:
+			self.homo_mat = None
+			seg_mask = False
+
+		# Load train images and augment train data and images
+		df_train, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
+											  seg_mask=seg_mask)
+
+		# Load val scene images
+		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name)
+
+		# Initialize dataloaders
+		train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)
+		train_loader = DataLoader(train_dataset, batch_size=1, collate_fn=scene_collate, shuffle=True)
+
+		val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
+		val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
+
+		# Preprocess images, in particular resize, pad and normalize as semantic segmentation backbone requires
+		resize(train_images, factor=params['resize'], seg_mask=seg_mask)
+		pad(train_images, division_factor=self.division_factor)  # make sure that image shape is divisible by 32, for UNet segmentation
+		preprocess_image_for_segmentation(train_images, seg_mask=seg_mask)
+
+		resize(val_images, factor=params['resize'], seg_mask=seg_mask)
+		pad(val_images, division_factor=self.division_factor)  # make sure that image shape is divisible by 32, for UNet segmentation
+		preprocess_image_for_segmentation(val_images, seg_mask=seg_mask)
+
+		model = self.model.to(device)
+
+		# Freeze segmentation model
+		for param in model.semantic_segmentation.parameters():
+			param.requires_grad = False
+
+		optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
+		criterion = nn.BCEWithLogitsLoss()
+
+		# Create template
+		size = int(4200 * params['resize'])
+
+		input_template = create_dist_mat(size=size)
+		input_template = torch.Tensor(input_template).to(device)
+
+		gt_template = create_gaussian_heatmap_template(size=size, kernlen=params['kernlen'], nsig=params['nsig'], normalize=False)
+		gt_template = torch.Tensor(gt_template).to(device)
+
+		best_test_ADE = 99999999999999
+
+		# self.train_ADE = []
+		# self.train_FDE = []
+		# self.val_ADE = []
+		# self.val_FDE = []
+
+		print('Start training')
+		for e in tqdm(range(params['num_epochs']), desc='Epoch'):
+			train_ADE, train_FDE, train_loss = train_style_enc(model, train_loader, train_images, e, obs_len, pred_len,
+													 batch_size, params, gt_template, device,
+													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
+			# self.train_ADE.append(train_ADE)
+			# self.train_FDE.append(train_FDE)
+
+			# # For faster inference, we don't use TTST and CWS here, only for the test set evaluation
+			# val_ADE, val_FDE = evaluate(model, val_loader, val_images, num_goals, num_traj,
+			# 							obs_len=obs_len, batch_size=batch_size,
+			# 							device=device, input_template=input_template,
+			# 							waypoints=params['waypoints'], resize=params['resize'],
+			# 							temperature=params['temperature'], use_TTST=False,
+			# 							use_CWS=False, dataset_name=dataset_name,
+			# 							homo_mat=self.homo_mat, mode='val')
+			# print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
+			# self.val_ADE.append(val_ADE)
+			# self.val_FDE.append(val_FDE)
+
+			# if val_ADE < best_test_ADE:
+			# 	print(f'Best Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
+			# 	torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
+			# 	best_test_ADE = val_ADE
