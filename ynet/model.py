@@ -44,11 +44,11 @@ class StyleEncoder(nn.Module):
 
 	def forward(self, x):
 		# Saves the feature maps Tensor of each layer into a list, as we will later need them again for the decoder
-		features = []
+		# features = []
 		for stage in self.stages:
 			x = stage(x)
-			features.append(x)
-		return features
+			# features.append(x)
+		return x
 
 
 class YNetEncoder(nn.Module):

@@ -131,17 +131,8 @@ def train_style_enc(model, train_loader, train_images, e, obs_len, pred_len, bat
 	# outer loop, for loop over each scene as scenes have different image size and to calculate segmentation only once
 	for batch, (trajectory, meta, scene) in enumerate(train_loader):
 		# Stop training after 25 batches to increase evaluation frequency
-		if dataset_name == 'sdd' and obs_len == 8 and batch > 25:
+		if dataset_name == 'sdd' and obs_len == 8 and batch > 25:				# TODO: why's it?
 			break
-
-		# TODO Delete
-		if dataset_name == 'eth':
-			print(counter)
-			counter += batch_size
-			# Break after certain number of batches to approximate evaluation, else one epoch takes really long
-			if counter > 30: #TODO Delete
-				break
-
 
 		# Get scene image and apply semantic segmentation
 		if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
@@ -179,5 +170,14 @@ def train_style_enc(model, train_loader, train_images, e, obs_len, pred_len, bat
 			style_features = model.style_features(feature_input)
 			
 			import pdb; pdb.set_trace()
+
+			'''
+				semantic_map [BS, 6, 384, 512]
+				style_features [BS, 64, 24, 32]
+
+				TODO: 
+					1) data loader
+					2) proj head
+			'''
 
 			print("TODO: training loss")
