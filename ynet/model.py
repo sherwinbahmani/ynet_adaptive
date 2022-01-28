@@ -323,7 +323,7 @@ class YNet:
 										temperature=params['temperature'], use_TTST=False,
 										use_CWS=False, dataset_name=dataset_name,
 										homo_mat=self.homo_mat, mode='val')
-			# print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
+			print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
 			self.val_ADE.append(val_ADE)
 			self.val_FDE.append(val_FDE)
 
@@ -332,7 +332,7 @@ class YNet:
 				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
 				best_test_ADE = val_ADE
 
-	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None):
+	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_small=False):
 		"""
 		Val function
 		:param data: pd.df, val data
@@ -374,7 +374,7 @@ class YNet:
 			self.homo_mat = None
 			seg_mask = False
 
-		test_images = create_images_dict(data, image_path=image_path, image_file=image_file_name)
+		test_images = create_images_dict(data, image_path=image_path, image_file=image_file_name, use_raw_small=use_raw_small)
 
 		test_dataset = SceneDataset(data, resize=params['resize'], total_len=total_len)
 		test_loader = DataLoader(test_dataset, batch_size=1, collate_fn=scene_collate)

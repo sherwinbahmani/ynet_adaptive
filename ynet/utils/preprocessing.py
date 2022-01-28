@@ -215,7 +215,8 @@ def split_fragmented(df):
 
 def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train', pickle_path=None,
 							  train_labels=[], test_labels=[], test_per=1.0, max_train_agents=10000,
-							  train_set_ratio=1.0, test_on_train=False):
+							  train_set_ratio=1.0, test_on_train=False, num_train_agents=None, num_test_agents=None,
+							  random_train_test=True):
 	"""
 	Helper function to aggregate loading and preprocessing in one function. Preprocessing contains:
 	- Split fragmented trajectories
@@ -240,10 +241,12 @@ def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train'
 	df = sliding_window(df, window_size=window_size, stride=stride)
 	df_train = filter_labels(df, train_labels)
 	if test_labels == train_labels:
-		df_train, df_test = split_df(df_train, ratio=train_set_ratio, test_on_train=test_on_train)
+		df_train, df_test = split_df(df_train, ratio=train_set_ratio, test_on_train=test_on_train,
+									 num_train_agents=num_train_agents, num_test_agents=num_test_agents,
+									 random_train_test=random_train_test)
 	else:
 		df_test = filter_labels(df, test_labels)
-	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents)
+	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=num_test_agents)
 	df_train = df_train.drop(columns=['label'])
 	df_test= df_test.drop(columns=['label'])
 	# compute_velocity_dist(df_train)
@@ -280,7 +283,7 @@ def filter_labels(df, labels):
 	df = df[np.array([df['label'].values == label for label in labels]).any(axis=0)]
 	return df
 
-def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents):
+def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=None):
 	labels = np.unique(df_train["label"].values)
 	# Filter based on the least occuring label across all scenes
 	min_num = min([len(np.unique(df_train[df_train["label"] == label]["metaId"].values))
@@ -297,21 +300,38 @@ def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents):
 	# Filter test set based on given percentage
 	meta_ids = np.unique(df_test["metaId"].values)
 	mask = np.zeros_like(meta_ids).astype(bool)
-	min_num_test = min(int(min_num * test_per), len(meta_ids))
+	min_num_test = min(int(min_num * test_per), len(meta_ids)) if num_test_agents is None else num_test_agents
 	mask[:min_num_test] = True
 	np.random.shuffle(mask)
 	df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)]
 	print(f"{min_num} agents for each training class, {min_num_test} agents for test class")
 	return df_train, df_test
 
-def split_df(df, ratio=1.0, test_on_train=False):
+def split_df(df, ratio=None, test_on_train=False, num_train_agents=None, num_test_agents=None, random=True, random_train_test=True):
 	meta_ids = np.unique(df["metaId"].values)
 	mask = np.ones_like(meta_ids).astype(bool)
-	mask[:int(len(meta_ids)*(1-ratio))] = False
-	np.random.shuffle(mask)
+	if ratio is not None:
+		num_test = int(len(meta_ids)*(1-ratio))
+	elif num_train_agents is not None and num_test_agents is not None:
+		num_test = num_test_agents
+	else:
+		raise ValueError
+	mask[:num_test] = False
+	if random_train_test:
+		np.random.shuffle(mask)
 	split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
-	if test_on_train:
+	if test_on_train and num_train_agents is None and num_test_agents is None:
 		return df, df[split_mask == False]
+	elif test_on_train and num_train_agents is not None and num_test_agents is not None:
+		mask_train = np.zeros_like(meta_ids).astype(bool)
+		train_idx_all = np.where(mask)[0]
+		if random_train_test:
+			train_idx = np.random.choice(train_idx_all, num_train_agents)
+		else:
+			train_idx = train_idx_all[:num_train_agents]
+		mask_train[train_idx] = True
+		split_mask_train = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask_train]]).any(axis=0)
+		return df[split_mask_train], df[split_mask == False]
 	else:
 		return df[split_mask], df[split_mask == False]
 
