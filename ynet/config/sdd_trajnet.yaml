@@ -29,6 +29,7 @@ segmentation_model_fp: ./segmentation_models/SDD_segmentation.pth
 semantic_classes: 6
 
 loss_scale: 1000  # factor to scale the loss
+contrast_loss_scale: 10  # factor to scale the loss
 
 kernlen: 31  # (image) size of Gaussian kernel used for ground-truth Gaussian heatmap
 nsig: 4  # sigma of Gaussian kernel used for ground-truth Gaussian heatmap

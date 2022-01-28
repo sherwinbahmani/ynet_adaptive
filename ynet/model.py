@@ -14,6 +14,35 @@ from test import evaluate
 from train import train, train_style_enc
 
 
+class StyleHat (nn.Module):
+	def __init__(self, input_size, hidden_size, output_size, num_classes):
+		"""
+		Encoder model
+		:param in_channels: int, semantic_classes + obs_len
+		:param channels: list, hidden layer channels
+		"""
+		super(StyleHat, self).__init__()
+		self.hat = nn.Sequential(
+			nn.Linear(input_size, hidden_size),
+			nn.ReLU(inplace=True),
+			nn.Linear(hidden_size, output_size)
+			nn.ReLU(inplace=True),
+		)
+
+		self.classifier = nn.Sequential(
+            nn.Linear(output_size, output_size),
+            nn.ReLU(), nn.Linear(output_size, num_classes)
+        )
+
+	def forward(self, x):
+		x = x.flatten()
+		return self.hat(x)
+
+	def classify(self, x):
+		x = self.classifier(x)
+
+
+
 class StyleEncoder(nn.Module):
 	def __init__(self, in_channels, channels=(64, 128, 256, 512, 512)):
 		"""
@@ -40,6 +69,8 @@ class StyleEncoder(nn.Module):
 				nn.ReLU(inplace=True)))
 
 		# TODO: dimension reduction
+
+		self.stages.append(nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False))
 
 		# self.stages.append(nn.Sequential(nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)))
 		# self.stages.append(nn.Sequential(
@@ -191,6 +222,7 @@ class YNetTorch(nn.Module):
 		self.softargmax_ = SoftArgmax2D(normalized_coordinates=False)
 
 		self.style_enc = StyleEncoder(in_channels=semantic_classes + obs_len, channels=encoder_channels)
+		self.style_hat = StyleHat(200, 200, 200, 3) # TODO: find the sizes
 
 	def segmentation(self, image):
 		return self.semantic_segmentation(image)
@@ -210,9 +242,19 @@ class YNetTorch(nn.Module):
 		features = self.encoder(x)
 		return features
 
-	# Forward pass for feature encoder, returns list of feature maps
+	# Forward pass for style encoder, returns list of feature maps
 	def style_features(self, x):
 		features = self.style_enc(x)
+		return features
+
+	# Forward pass for feature encoder, returns list of feature maps
+	def style_low_dim(self, x):
+		features = self.style_hat(x)
+		return features
+
+	# Forward pass for classifier
+	def style_class_dim(self, x):
+		features = self.style_hat.classify(x)
 		return features
 
 	# Softmax for Image data as in dim=NxCxHxW, returns softmax image shape=NxCxHxW
@@ -549,12 +591,8 @@ class YNet:
 		gt_template = create_gaussian_heatmap_template(size=size, kernlen=params['kernlen'], nsig=params['nsig'], normalize=False)
 		gt_template = torch.Tensor(gt_template).to(device)
 
-		best_test_ADE = 99999999999999
+		best_train_accuracy = 0
 
-		# self.train_ADE = []
-		# self.train_FDE = []
-		# self.val_ADE = []
-		# self.val_FDE = []
 
 		print('Start training')
 		for e in tqdm(range(params['num_epochs']), desc='Epoch'):

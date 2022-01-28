@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from utils.image_utils import get_patch, image2world
+from loss import contrastive_loss
+from torch.nn.functional import cross_entropy
 
 
 def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat):
@@ -111,12 +113,12 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 	return train_ADE.item(), train_FDE.item(), train_loss.item()
 
 
-def train_style_enc(model, train_loader, train_images, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat):
+def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat):
 	"""
 	Run training for one epoch
 
 	:param model: torch model
-	:param train_loader: torch dataloader
+	:param train_loader: torch dataloaders
 	:param train_images: dict with keys: scene_name value: preprocessed image as torch.Tensor
 	:param e: epoch number
 	:param params: dict of hyperparameters
@@ -124,60 +126,100 @@ def train_style_enc(model, train_loader, train_images, e, obs_len, pred_len, bat
 	:return: train_ADE, train_FDE, train_loss for one epoch
 	"""
 	train_loss = 0
-	train_ADE = []
-	train_FDE = []
 	model.train()
-	counter = 0
-	# outer loop, for loop over each scene as scenes have different image size and to calculate segmentation only once
-	for batch, (trajectory, meta, scene) in enumerate(train_loader):
-		# Stop training after 25 batches to increase evaluation frequency
-		if dataset_name == 'sdd' and obs_len == 8 and batch > 25:				# TODO: why's it?
-			break
 
-		# Get scene image and apply semantic segmentation
-		if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
-			model.eval()
-			scene_image = train_images[scene].to(device).unsqueeze(0)
-			scene_image = model.segmentation(scene_image)
-			model.train()
+	# IMPORTANT
+	# we assume that we have dataloaders that can give infinite number of elems, but are marqued finished once you've drawn all data already once
 
-		# inner loop, for each trajectory in the scene
-		for i in range(0, len(trajectory), batch_size):
-			if e >= params['unfreeze']:
+	batch = 0
+
+	while all([tl.finished() for tl in train_loaders]):
+
+		batch += 1
+		loss = 0
+		scene_images = []
+		trajectories = []
+		scenes = []
+
+		for i, (train_loader, train_images) in enumerate(zip(train_loaders, train_images_list)):
+
+			(trajectory, meta, scene) = next(train_loader)
+			trajectories.append(trajectory)
+			scenes.append(scenes)
+
+			# Stop training after 25 batches to increase evaluation frequency
+			if dataset_name == 'sdd' and obs_len == 8 and batch > 25:				# TODO: why's it?
+				return train_loss.item()
+
+			# Get scene image and apply semantic segmentation
+			if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
+				model.eval()
 				scene_image = train_images[scene].to(device).unsqueeze(0)
-				scene_image = model.segmentation(scene_image)
+				scene_images.append(model.segmentation(scene_image))
+				model.train()
 
-			# Create Heatmaps for past and ground-truth future trajectories
-			_, _, H, W = scene_image.shape  # image shape
+		len_min_trajectories = min([len(traj) for traj in trajectories])
 
-			observed = trajectory[i:i+batch_size, :obs_len, :].reshape(-1, 2).cpu().numpy()
-			observed_map = get_patch(input_template, observed, H, W)
-			observed_map = torch.stack(observed_map).reshape([-1, obs_len, H, W])
+		for i in range(0, len_min_trajectories, batch_size):
 
-			gt_future = trajectory[i:i + batch_size, obs_len:].to(device)
-			gt_future_map = get_patch(gt_template, gt_future.reshape(-1, 2).cpu().numpy(), H, W)
-			gt_future_map = torch.stack(gt_future_map).reshape([-1, pred_len, H, W])
+			low_dim_style_list = []
+			classified_style_list = []
 
-			gt_waypoints = gt_future[:, params['waypoints']]
-			gt_waypoint_map = get_patch(input_template, gt_waypoints.reshape(-1, 2).cpu().numpy(), H, W)
-			gt_waypoint_map = torch.stack(gt_waypoint_map).reshape([-1, gt_waypoints.shape[1], H, W])
-
-			# Concatenate heatmap and semantic map
-			semantic_map = scene_image.expand(observed_map.shape[0], -1, -1, -1)  # expand to match heatmap size
-			feature_input = torch.cat([semantic_map, observed_map], dim=1)
-
-			# Forward pass
-			style_features = model.style_features(feature_input)
 			
-			import pdb; pdb.set_trace()
+			for train_images, scene_image, scene, trajectory in zip(train_images_list, scene_images, scenes, trajectories):
 
-			'''
-				semantic_map [BS, 6, 384, 512]
-				style_features [BS, 64, 24, 32]
+				if e >= params['unfreeze']:
+					scene_image = train_images[scene].to(device).unsqueeze(0)
+					scene_image = model.segmentation(scene_image)
 
-				TODO: 
-					1) data loader
-					2) proj head
-			'''
+				# Create Heatmaps for past and ground-truth future trajectories
+				_, _, H, W = scene_image.shape  # image shape
 
-			print("TODO: training loss")
+				observed = trajectory[i:i+batch_size, :, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION obs_len
+				observed_map = get_patch(input_template, observed, H, W)
+				observed_map = torch.stack(observed_map).reshape([-1, obs_len, H, W])
+
+				gt_future = trajectory[i:i + batch_size, obs_len:].to(device)
+				gt_future_map = get_patch(gt_template, gt_future.reshape(-1, 2).cpu().numpy(), H, W)
+				gt_future_map = torch.stack(gt_future_map).reshape([-1, pred_len, H, W])
+
+				gt_waypoints = gt_future[:, params['waypoints']]
+				gt_waypoint_map = get_patch(input_template, gt_waypoints.reshape(-1, 2).cpu().numpy(), H, W)
+				gt_waypoint_map = torch.stack(gt_waypoint_map).reshape([-1, gt_waypoints.shape[1], H, W])
+
+				# Concatenate heatmap and semantic map
+				semantic_map = scene_image.expand(observed_map.shape[0], -1, -1, -1)  # expand to match heatmap size
+				feature_input = torch.cat([semantic_map, observed_map], dim=1)
+
+				# Forward pass
+				style_features = model.style_features(feature_input)
+				low_dim_style_features = model.style_low_dim(style_features)
+				low_dim_style_list.append(low_dim_style_features)
+
+				# For classification
+				class_features = model.style_class_dim(low_dim_style_features).detach()
+				classified_style_list.append(class_features)
+
+
+			loss = 0
+
+			# Contrastive loss
+			input_features = torch.stack(low_dim_style_list)
+			input_labels = torch.range(len(train_loaders)).unsqueeze().to(device)
+			loss += contrastive_loss(input_features, input_labels) * params['contrast_loss_scale']
+
+			# Classifier
+			classifier_features = torch.cat(classified_style_list)
+			classifier_labels = torch.stack([
+				torch.ones(feat.shape[0]) * i
+			] for i, feat in classified_style_list).to(device)
+			loss += cross_entropy(classifier_features, classifier_labels)
+
+			# Backpropagate 
+			optimizer.zero_grad()
+			loss.backward()
+			optimizer.step()
+
+			train_loss += loss.detach()
+
+	return train_loss.item()
