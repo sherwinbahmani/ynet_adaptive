@@ -4,7 +4,7 @@ import os
 import cv2
 from copy import deepcopy
 
-def load_SDD_small(path):
+def load_sdd_raw(path):
 	'''
 	Loads data from Stanford Drone Dataset. Makes the following preprocessing:
 	-filter out unnecessary columns (e.g. generated, label, occluded)
@@ -106,6 +106,9 @@ def load_SDD(path='data/SDD/', mode='train'):
 	data['metaId'] = [rec_trackId2metaId[i] for i in data['rec&trackId']]
 	data = data.drop(columns=['rec&trackId'])
 	return data
+
+def compute_velocity_dist(df):
+	pass
 
 
 def mask_step(x, step):
@@ -210,8 +213,10 @@ def split_fragmented(df):
 	df = df.drop(columns='newMetaId')
 	return df
 
-def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train', pickle_path=None,
-							  train_labels=[], test_labels=[]):
+def load_raw_dataset(step, window_size, stride, path=None, mode='train', pickle_path=None,
+							  train_labels=[], test_labels=[], test_per=1.0, max_train_agents=10000,
+							  train_set_ratio=1.0, test_on_train=False, num_train_agents=None, num_test_agents=None,
+							  random_train_test=True):
 	"""
 	Helper function to aggregate loading and preprocessing in one function. Preprocessing contains:
 	- Split fragmented trajectories
@@ -229,18 +234,23 @@ def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train'
 	if pickle_path is not None:
 		df = pd.read_pickle(pickle_path)
 	else:
-		df = load_SDD_small(path=path)
+		df = load_sdd_raw(path=path)
 	df = split_fragmented(df)  # split track if frame is not continuous
 	df = downsample(df, step=step)
 	df = filter_short_trajectories(df, threshold=window_size)
 	df = sliding_window(df, window_size=window_size, stride=stride)
 	df_train = filter_labels(df, train_labels)
-	if test_labels == []:
-		df_train, df_test = split_df(df_train)
+	if test_labels == train_labels:
+		df_train, df_test = split_df(df_train, ratio=train_set_ratio, test_on_train=test_on_train,
+									 num_train_agents=num_train_agents, num_test_agents=num_test_agents,
+									 random_train_test=random_train_test)
 	else:
 		df_test = filter_labels(df, test_labels)
+	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=num_test_agents)
 	df_train = df_train.drop(columns=['label'])
 	df_test= df_test.drop(columns=['label'])
+	# compute_velocity_dist(df_train)
+	# compute_velocity_dist(df_test)
 	return df_train, df_test
 
 def load_and_window_SDD(step, window_size, stride, path=None, mode='train', pickle_path=None):
@@ -273,13 +283,57 @@ def filter_labels(df, labels):
 	df = df[np.array([df['label'].values == label for label in labels]).any(axis=0)]
 	return df
 
-def split_df(df, ratio=0.2):
+def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=None):
+	labels = np.unique(df_train["label"].values)
+	# Filter based on the least occuring label across all scenes
+	min_num = min([len(np.unique(df_train[df_train["label"] == label]["metaId"].values))
+				   for label in labels] + [max_train_agents])
+	meta_ids_keep = []
+	for label in labels:
+		meta_ids = np.unique(df_train[df_train["label"] == label]["metaId"].values)
+		mask = np.zeros_like(meta_ids).astype(bool)
+		mask[:min_num] = True
+		np.random.shuffle(mask)
+		meta_ids_keep.append(meta_ids[mask])
+	meta_ids_keep = np.array(meta_ids_keep).reshape(-1)
+	df_train = df_train[np.array([df_train["metaId"] == meta_id for meta_id in meta_ids_keep]).any(axis=0)]
+	# Filter test set based on given percentage
+	meta_ids = np.unique(df_test["metaId"].values)
+	mask = np.zeros_like(meta_ids).astype(bool)
+	min_num_test = min(int(min_num * test_per), len(meta_ids)) if num_test_agents is None else num_test_agents
+	mask[:min_num_test] = True
+	np.random.shuffle(mask)
+	df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)]
+	print(f"{min_num} agents for each training class, {min_num_test} agents for test class")
+	return df_train, df_test
+
+def split_df(df, ratio=None, test_on_train=False, num_train_agents=None, num_test_agents=None, random=True, random_train_test=True):
 	meta_ids = np.unique(df["metaId"].values)
 	mask = np.ones_like(meta_ids).astype(bool)
-	mask[:int(len(meta_ids)*ratio)] = False
-	np.random.shuffle(mask)
+	if ratio is not None:
+		num_test = int(len(meta_ids)*(1-ratio))
+	elif num_train_agents is not None and num_test_agents is not None:
+		num_test = num_test_agents
+	else:
+		raise ValueError
+	mask[:num_test] = False
+	if random_train_test:
+		np.random.shuffle(mask)
 	split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
-	return df[split_mask], df[split_mask == False]
+	if test_on_train and num_train_agents is None and num_test_agents is None:
+		return df, df[split_mask == False]
+	elif test_on_train and num_train_agents is not None and num_test_agents is not None:
+		mask_train = np.zeros_like(meta_ids).astype(bool)
+		train_idx_all = np.where(mask)[0]
+		if random_train_test:
+			train_idx = np.random.choice(train_idx_all, num_train_agents)
+		else:
+			train_idx = train_idx_all[:num_train_agents]
+		mask_train[train_idx] = True
+		split_mask_train = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask_train]]).any(axis=0)
+		return df[split_mask_train], df[split_mask == False]
+	else:
+		return df[split_mask], df[split_mask == False]
 
 
 def rot(df, image, k=1):
@@ -343,7 +397,7 @@ def fliplr(df, image):
 	return xy, image
 
 
-def augment_data(data, image_path='data/SDD/train', images={}, image_file='reference.jpg', seg_mask=False):
+def augment_data(data, image_path='data/SDD/train', images={}, image_file='reference.jpg', seg_mask=False, use_raw_data=False):
 	'''
 	Perform data augmentation
 	:param data: Pandas df, needs x,y,metaId,sceneId columns
@@ -355,7 +409,11 @@ def augment_data(data, image_path='data/SDD/train', images={}, image_file='refer
 	'''
 	ks = [1, 2, 3]
 	for scene in data.sceneId.unique():
-		im_path = os.path.join(image_path, scene, image_file)
+		scene_name, scene_idx = scene.split("_")
+		if use_raw_data:
+			im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
+		else:
+			im_path = os.path.join(image_path, scene, image_file)
 		if seg_mask:
 			im = cv2.imread(im_path, 0)
 		else:
@@ -366,7 +424,10 @@ def augment_data(data, image_path='data/SDD/train', images={}, image_file='refer
 	for k in ks:
 		metaId_max = data['metaId'].max()
 		for scene in data_.sceneId.unique():
-			im_path = os.path.join(image_path, scene, image_file)
+			if use_raw_data:
+				im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
+			else:
+				im_path = os.path.join(image_path, scene, image_file)
 			if seg_mask:
 				im = cv2.imread(im_path, 0)
 			else:
@@ -491,13 +552,18 @@ def resize_and_pad_image(images, size, pad=2019):
 		images[key] = im
 
 
-def create_images_dict(data, image_path, image_file='reference.jpg'):
+def create_images_dict(data, image_path, image_file='reference.jpg', use_raw_data=False):
 	images = {}
 	for scene in data.sceneId.unique():
 		if image_file == 'oracle.png':
 			im = cv2.imread(os.path.join(image_path, scene, image_file), 0)
 		else:
-			im = cv2.imread(os.path.join(image_path, scene, image_file))
+			if use_raw_data:
+				scene_name, scene_idx = scene.split("_")
+				im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
+			else:
+				im_path = os.path.join(image_path, scene, image_file)
+			im = cv2.imread(im_path)
 		images[scene] = im
 	return images
 

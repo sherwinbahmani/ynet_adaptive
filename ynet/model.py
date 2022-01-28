@@ -120,6 +120,25 @@ class YNetEncoder(nn.Module):
 			features.append(x)
 		return features
 
+def calc_mean_std(feat, eps=1e-5):
+    # eps is a small value added to the variance to avoid divide-by-zero.
+    size = feat.size()
+    assert (len(size) == 4)
+    N, C = size[:2]
+    feat_var = feat.view(N, C, -1).var(dim=2) + eps
+    feat_std = feat_var.sqrt().view(N, C, 1, 1)
+    feat_mean = feat.view(N, C, -1).mean(dim=2).view(N, C, 1, 1)
+    return feat_mean, feat_std
+
+def adaptive_instance_normalization(content_feat, style_feat):
+    # assert (content_feat.size()[:2] == style_feat.size()[:2])
+    size = content_feat.size()
+    style_mean, style_std = calc_mean_std(style_feat)
+    content_mean, content_std = calc_mean_std(content_feat)
+
+    normalized_feat = (content_feat - content_mean.expand(
+        size)) / content_std.expand(size)
+    return normalized_feat * style_std.expand(size) + style_mean.expand(size)
 
 class YNetDecoder(nn.Module):
 	def __init__(self, encoder_channels, decoder_channels, output_len, traj=False):
@@ -187,7 +206,7 @@ class YNetDecoder(nn.Module):
 			x = module(x)  # Conv
 		x = self.predictor(x)  # last predictor layer
 		return x
-
+ 
 
 class YNetTorch(nn.Module):
 	def __init__(self, obs_len, pred_len, segmentation_model_fp, use_features_only=False, semantic_classes=6,
@@ -256,6 +275,13 @@ class YNetTorch(nn.Module):
 	def style_class_dim(self, x):
 		features = self.style_hat.classify(x)
 		return features
+		
+	# Encode the feature map vector with the given style
+	def apply_adain(self, features, style):
+		features_stylized = []
+		for x, y in zip(features, style):
+			features_stylized.append(adaptive_instance_normalization(x, y))
+		return features_stylized
 
 	# Softmax for Image data as in dim=NxCxHxW, returns softmax image shape=NxCxHxW
 	def softmax(self, x):
@@ -304,7 +330,7 @@ class YNet:
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
-	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, with_style=False):
+	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -349,10 +375,10 @@ class YNet:
 
 		# Load train images and augment train data and images
 		df_train, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
-											  seg_mask=seg_mask)
+											  seg_mask=seg_mask, use_raw_data=use_raw_data)
 
 		# Load val scene images
-		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name)
+		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name, use_raw_data=use_raw_data)
 
 		# Initialize dataloaders
 		train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)
@@ -420,7 +446,7 @@ class YNet:
 				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
 				best_test_ADE = val_ADE
 
-	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None):
+	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_data=False):
 		"""
 		Val function
 		:param data: pd.df, val data
@@ -436,6 +462,7 @@ class YNet:
 
 		if device is None:
 			device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+			print('Working on GPU: ', torch.cuda.is_available())
 
 		obs_len = self.obs_len
 		pred_len = self.pred_len
@@ -462,7 +489,7 @@ class YNet:
 			self.homo_mat = None
 			seg_mask = False
 
-		test_images = create_images_dict(data, image_path=image_path, image_file=image_file_name)
+		test_images = create_images_dict(data, image_path=image_path, image_file=image_file_name, use_raw_data=use_raw_data)
 
 		test_dataset = SceneDataset(data, resize=params['resize'], total_len=total_len)
 		test_loader = DataLoader(test_dataset, batch_size=1, collate_fn=scene_collate)

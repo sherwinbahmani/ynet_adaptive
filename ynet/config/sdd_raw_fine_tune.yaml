@@ -3,7 +3,7 @@ batch_size: 8
 
 viz_epoch: 10
 learning_rate: 0.0001
-num_epochs: 300
+num_epochs: 1
 
 encoder_channels:  # list of kernels in encoder
   - 32
@@ -25,11 +25,9 @@ waypoints:
   - 11
 
 temperature: 1.0
-segmentation_model_fp: ./segmentation_models/SDD_segmentation.pth
 semantic_classes: 6
 
 loss_scale: 1000  # factor to scale the loss
-contrast_loss_scale: 10  # factor to scale the loss
 
 kernlen: 31  # (image) size of Gaussian kernel used for ground-truth Gaussian heatmap
 nsig: 4  # sigma of Gaussian kernel used for ground-truth Gaussian heatmap
@@ -44,3 +42,21 @@ rel_threshold: 0.01
 # CWS
 use_CWS: False
 CWS_params: None
+
+# Data
+use_raw_data: True # Read from raw dataset instead of pickle
+# Labels list: ['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater']
+# Total Agents: [103040, 3060, 53240, 4040, 297200, 4620]/20
+train_labels: ['Skater']
+test_labels: ['Skater']
+# Filter dataset
+step: 12 #step = 12 (2.5 FPS) step = 30 () 1 FPS
+min_num_steps_seq: 20
+filter_stride: 20 # timesteps to move from one trajectory to the next one
+test_per: 0.3 # percentage for setting number of testing agents based on number of training agents per class
+max_train_agents: 10000 #202 # further constrain the number of training agents per class
+train_set_ratio: null #0.8
+test_on_train: True # Instead of splitting train into train and test, test on train to have all data
+num_train_agents: 4
+num_test_agents: 100
+random_train_test_split: False

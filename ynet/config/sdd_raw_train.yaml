@@ -1,0 +1,62 @@
+resize: 0.25  # resize factor
+batch_size: 8
+
+viz_epoch: 10
+learning_rate: 0.0001
+num_epochs: 300
+
+encoder_channels:  # list of kernels in encoder
+  - 32
+  - 32
+  - 64
+  - 64
+  - 64
+
+decoder_channels:  # list of kernels in decoder
+  - 64
+  - 64
+  - 64
+  - 32
+  - 32
+
+# list of selected goal and waypoints as timestep idx, e.g. 14 means the 14th future timestep is used as a waypoint,
+# last element is goal timestep
+waypoints:
+  - 11
+
+temperature: 1.0
+semantic_classes: 6
+
+loss_scale: 1000  # factor to scale the loss
+
+kernlen: 31  # (image) size of Gaussian kernel used for ground-truth Gaussian heatmap
+nsig: 4  # sigma of Gaussian kernel used for ground-truth Gaussian heatmap
+
+use_features_only: False  # If True the segmentation model only uses the
+unfreeze: 150  # Unfreeze semantic segmentation model weights after this # of epochs
+
+# TTST
+use_TTST: False
+rel_threshold: 0.01
+
+# CWS
+use_CWS: False
+CWS_params: None
+
+# Data
+use_raw_data: True # Read from raw dataset instead of pickle
+# Labels list: ['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater']
+# Total Agents: [103040, 3060, 53240, 4040, 297200, 4620]/20
+train_labels: ['Pedestrian', 'Biker', 'Car']
+test_labels: ['Pedestrian', 'Biker', 'Car']
+# Filter dataset
+step: 12 #step = 12 (2.5 FPS) step = 30 () 1 FPS
+min_num_steps_seq: 20
+filter_stride: 20 # timesteps to move from one trajectory to the next one
+test_per: 0.3 # percentage for setting number of testing agents based on number of training agents per class
+max_train_agents: 10000 #202 # further constrain the number of training agents per class
+train_set_ratio: 0.8
+test_on_train: True # Instead of splitting train into train and test, test on train to have all data
+num_train_agents: null
+num_test_agents: null
+random_train_test_split: True
