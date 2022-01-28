@@ -113,7 +113,7 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 	return train_ADE.item(), train_FDE.item(), train_loss.item()
 
 
-def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat, style_only=True):
+def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat, style_only=True):
 	"""
 	Run training for one epoch
 
@@ -127,13 +127,9 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 	"""
 	train_loss, train_accuracy = [], []
 	model.train()
-
-	# IMPORTANT
-	# we assume that we have dataloaders that can give infinite number of elems, but are marqued finished once you've drawn all data already once
-
 	batch = 0
 
-	while all([tl.finished() for tl in train_loaders]):
+	while batch < len(train_loaders[[0]]):
 
 		batch += 1
 		loss = 0
@@ -141,7 +137,7 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 		trajectories = []
 		scenes = []
 
-		for i, (train_loader, train_images) in enumerate(zip(train_loaders, train_images_list)):
+		for i, train_loader in enumerate(train_loaders):
 
 			(trajectory, meta, scene) = next(train_loader)
 			trajectories.append(trajectory)
@@ -166,7 +162,7 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 			classified_style_list = []
 			loss = 0
 			
-			for train_images, scene_image, scene, trajectory in zip(train_images_list, scene_images, scenes, trajectories):
+			for scene_image, scene, trajectory in zip(scene_images, scenes, trajectories):
 
 				if e >= params['unfreeze']:
 					scene_image = train_images[scene].to(device).unsqueeze(0)
