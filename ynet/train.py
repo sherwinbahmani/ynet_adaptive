@@ -129,13 +129,11 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 	model.train()
 	batch = 0
 
-	while batch < len(train_loaders[[0]]):
+	while batch < len(train_loaders[0]):
 
 		batch += 1
 		loss = 0
-		scene_images = []
-		trajectories = []
-		scenes = []
+		scene_images, trajectories, scenes = []
 
 		for i, train_loader in enumerate(train_loaders):
 
@@ -171,21 +169,13 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 				# Create Heatmaps for past and ground-truth future trajectories
 				_, _, H, W = scene_image.shape  # image shape
 
-				observed = trajectory[i:i+batch_size, :, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION obs_len
-				observed_map = get_patch(input_template, observed, H, W)
-				observed_map = torch.stack(observed_map).reshape([-1, obs_len, H, W])
-
-				gt_future = trajectory[i:i + batch_size, obs_len:].to(device)
-				gt_future_map = get_patch(gt_template, gt_future.reshape(-1, 2).cpu().numpy(), H, W)
-				gt_future_map = torch.stack(gt_future_map).reshape([-1, pred_len, H, W])
-
-				gt_waypoints = gt_future[:, params['waypoints']]
-				gt_waypoint_map = get_patch(input_template, gt_waypoints.reshape(-1, 2).cpu().numpy(), H, W)
-				gt_waypoint_map = torch.stack(gt_waypoint_map).reshape([-1, gt_waypoints.shape[1], H, W])
+				observed_style = trajectory[i:i+batch_size, :, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION 
+				observed_map_style = get_patch(input_template, observed_style, H, W)
+				observed_map_style = torch.stack(observed_map_style).reshape([-1, trajectory.shape[1], H, W])
 
 				# Concatenate heatmap and semantic map
-				semantic_map = scene_image.expand(observed_map.shape[0], -1, -1, -1)  # expand to match heatmap size
-				feature_input = torch.cat([semantic_map, observed_map], dim=1)
+				semantic_map = scene_image.expand(observed_map_style.shape[0], -1, -1, -1)  # expand to match heatmap size
+				feature_input = torch.cat([semantic_map, observed_map_style], dim=1)
 
 				# Forward pass
 				style_features = model.style_features(feature_input)
@@ -198,6 +188,23 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 
 				# Add normal loss if also training the rest
 				if not style_only:
+
+					observed = trajectory[i:i+batch_size, :obs_len, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION 
+					observed_map = get_patch(input_template, observed, H, W)
+					observed_map = torch.stack(observed_map).reshape([-1, obs_len, H, W])
+
+					gt_future = trajectory[i:i + batch_size, obs_len:].to(device)
+					gt_future_map = get_patch(gt_template, gt_future.reshape(-1, 2).cpu().numpy(), H, W)
+					gt_future_map = torch.stack(gt_future_map).reshape([-1, pred_len, H, W])
+
+					gt_waypoints = gt_future[:, params['waypoints']]
+					gt_waypoint_map = get_patch(input_template, gt_waypoints.reshape(-1, 2).cpu().numpy(), H, W)
+					gt_waypoint_map = torch.stack(gt_waypoint_map).reshape([-1, gt_waypoints.shape[1], H, W])
+
+					# Concatenate heatmap and semantic map
+					semantic_map = scene_image.expand(observed_map.shape[0], -1, -1, -1)  # expand to match heatmap size
+					feature_input = torch.cat([semantic_map, observed_map], dim=1)
+
 					features = model.pred_features(feature_input) 
 
 					# Predict goal and waypoint probability distribution

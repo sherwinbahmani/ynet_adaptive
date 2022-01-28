@@ -30,7 +30,7 @@ def torch_multivariate_gaussian_heatmap(coordinates, H, W, dist, sigma_factor, r
 	return kernel / kernel.sum()
 
 
-def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_size, device, input_template, waypoints, resize, temperature, use_TTST=False, use_CWS=False, rel_thresh=0.002, CWS_params=None, dataset_name=None, homo_mat=None, mode='val', with_style=False):
+def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_size, device, input_template, waypoints, resize, temperature, use_TTST=False, use_CWS=False, rel_thresh=0.002, CWS_params=None, dataset_name=None, homo_mat=None, mode='val'):
 	"""
 
 	:param model: torch model
@@ -229,3 +229,83 @@ def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_
 		val_FDE = torch.cat(val_FDE).mean()
 
 	return val_ADE.item(), val_FDE.item()
+
+
+def evaluate_style(model, train_loaders, train_images, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat, style_only=True):
+	"""
+	Run training for one epoch
+
+	:param model: torch model
+	:param train_loader: torch dataloaders
+	:param train_images: dict with keys: scene_name value: preprocessed image as torch.Tensor
+	:param e: epoch number
+	:param params: dict of hyperparameters
+	:param gt_template:  precalculated Gaussian heatmap template as torch.Tensor
+	:return: train_ADE, train_FDE, train_loss for one epoch
+	"""
+	test_accuracy = []
+	model.eval()
+	batch = 0
+	with torch.no_grad():
+		while batch < len(train_loaders[0]):
+
+			batch += 1
+			scene_images, trajectories, scenes = []
+
+			for i, train_loader in enumerate(train_loaders):
+
+				(trajectory, meta, scene) = next(train_loader)
+				trajectories.append(trajectory)
+				scenes.append(scenes)
+
+				# Get scene image and apply semantic segmentation
+				if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
+					model.eval()
+					scene_image = train_images[scene].to(device).unsqueeze(0)
+					scene_images.append(model.segmentation(scene_image))
+					model.train()
+
+			len_min_trajectories = min([len(traj) for traj in trajectories])
+
+			for i in range(0, len_min_trajectories, batch_size):
+
+				classified_style_list = []
+				loss = 0
+				
+				for scene_image, scene, trajectory in zip(scene_images, scenes, trajectories):
+
+					if e >= params['unfreeze']:
+						scene_image = train_images[scene].to(device).unsqueeze(0)
+						scene_image = model.segmentation(scene_image)
+
+					# Create Heatmaps for past and ground-truth future trajectories
+					_, _, H, W = scene_image.shape  # image shape
+
+					observed_style = trajectory[i:i+batch_size, :, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION 
+					observed_map_style = get_patch(input_template, observed_style, H, W)
+					observed_map_style = torch.stack(observed_map_style).reshape([-1, trajectory.shape[1], H, W])
+
+					# Concatenate heatmap and semantic map
+					semantic_map = scene_image.expand(observed_map_style.shape[0], -1, -1, -1)  # expand to match heatmap size
+					feature_input = torch.cat([semantic_map, observed_map_style], dim=1)
+
+					# Forward pass
+					style_features = model.style_features(feature_input)
+					low_dim_style_features = model.style_low_dim(style_features)
+
+					# For classification
+					class_features = model.style_class_dim(low_dim_style_features).detach()
+					classified_style_list.append(class_features)
+
+				# Classifier
+				classifier_features = torch.cat(classified_style_list)
+				classifier_labels = torch.stack([
+					torch.ones(feat.shape[0]) * i
+				] for i, feat in classified_style_list).to(device)
+
+				# Metrics
+				classifier_prediction = classifier_features.argmax(dim=-1)
+				accuracy = ((classifier_prediction == classifier_labels) * 1).to(float).mean()
+				test_accuracy.append(accuracy.detach())
+
+		return torch.cat(test_accuracy).mean().item()
