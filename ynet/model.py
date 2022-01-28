@@ -242,7 +242,7 @@ class YNet:
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
-	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None):
+	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -287,10 +287,10 @@ class YNet:
 
 		# Load train images and augment train data and images
 		df_train, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
-											  seg_mask=seg_mask)
+											  seg_mask=seg_mask, use_raw_data=use_raw_data)
 
 		# Load val scene images
-		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name)
+		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name, use_raw_data=use_raw_data)
 
 		# Initialize dataloaders
 		train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)
@@ -358,7 +358,7 @@ class YNet:
 				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
 				best_test_ADE = val_ADE
 
-	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None):
+	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_data=False):
 		"""
 		Val function
 		:param data: pd.df, val data
@@ -401,7 +401,7 @@ class YNet:
 			self.homo_mat = None
 			seg_mask = False
 
-		test_images = create_images_dict(data, image_path=image_path, image_file=image_file_name)
+		test_images = create_images_dict(data, image_path=image_path, image_file=image_file_name, use_raw_data=use_raw_data)
 
 		test_dataset = SceneDataset(data, resize=params['resize'], total_len=total_len)
 		test_loader = DataLoader(test_dataset, batch_size=1, collate_fn=scene_collate)
