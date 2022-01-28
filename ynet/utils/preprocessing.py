@@ -4,7 +4,7 @@ import os
 import cv2
 from copy import deepcopy
 
-def load_SDD_small(path):
+def load_sdd_raw(path):
 	'''
 	Loads data from Stanford Drone Dataset. Makes the following preprocessing:
 	-filter out unnecessary columns (e.g. generated, label, occluded)
@@ -213,7 +213,7 @@ def split_fragmented(df):
 	df = df.drop(columns='newMetaId')
 	return df
 
-def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train', pickle_path=None,
+def load_raw_dataset(step, window_size, stride, path=None, mode='train', pickle_path=None,
 							  train_labels=[], test_labels=[], test_per=1.0, max_train_agents=10000,
 							  train_set_ratio=1.0, test_on_train=False, num_train_agents=None, num_test_agents=None,
 							  random_train_test=True):
@@ -234,7 +234,7 @@ def load_and_window_SDD_small(step, window_size, stride, path=None, mode='train'
 	if pickle_path is not None:
 		df = pd.read_pickle(pickle_path)
 	else:
-		df = load_SDD_small(path=path)
+		df = load_sdd_raw(path=path)
 	df = split_fragmented(df)  # split track if frame is not continuous
 	df = downsample(df, step=step)
 	df = filter_short_trajectories(df, threshold=window_size)
@@ -397,7 +397,7 @@ def fliplr(df, image):
 	return xy, image
 
 
-def augment_data(data, image_path='data/SDD/train', images={}, image_file='reference.jpg', seg_mask=False, use_raw_small=False):
+def augment_data(data, image_path='data/SDD/train', images={}, image_file='reference.jpg', seg_mask=False, use_raw_data=False):
 	'''
 	Perform data augmentation
 	:param data: Pandas df, needs x,y,metaId,sceneId columns
@@ -410,7 +410,7 @@ def augment_data(data, image_path='data/SDD/train', images={}, image_file='refer
 	ks = [1, 2, 3]
 	for scene in data.sceneId.unique():
 		scene_name, scene_idx = scene.split("_")
-		if use_raw_small:
+		if use_raw_data:
 			im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
 		else:
 			im_path = os.path.join(image_path, scene, image_file)
@@ -424,7 +424,7 @@ def augment_data(data, image_path='data/SDD/train', images={}, image_file='refer
 	for k in ks:
 		metaId_max = data['metaId'].max()
 		for scene in data_.sceneId.unique():
-			if use_raw_small:
+			if use_raw_data:
 				im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
 			else:
 				im_path = os.path.join(image_path, scene, image_file)
@@ -552,13 +552,13 @@ def resize_and_pad_image(images, size, pad=2019):
 		images[key] = im
 
 
-def create_images_dict(data, image_path, image_file='reference.jpg', use_raw_small=False):
+def create_images_dict(data, image_path, image_file='reference.jpg', use_raw_data=False):
 	images = {}
 	for scene in data.sceneId.unique():
 		if image_file == 'oracle.png':
 			im = cv2.imread(os.path.join(image_path, scene, image_file), 0)
 		else:
-			if use_raw_small:
+			if use_raw_data:
 				scene_name, scene_idx = scene.split("_")
 				im_path = os.path.join(image_path, scene_name, f"video{scene_idx}", image_file)
 			else:

@@ -4,63 +4,42 @@ import argparse
 import torch
 from datetime import datetime
 from model import YNet
-from utils.preprocessing import load_and_window_SDD_small, load_SDD_small
+from utils.preprocessing import load_raw_dataset
 
-# Custom block
+FOLDERNAME = './'
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-USE_RAW_SMALL = True # Read from raw dataset instead of pickle
-SDD_SMALL_PATH = "/fastdata/vilab07/sdd/sdd_small"
-# Labels list: ['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater']
-TRAIN_LABELS = ['Skater']
-TEST_LABELS = ['Skater']
-# Filter dataset
-STEP = 12 #STEP = 12 (2.5 FPS) STEP = 30 () 1 FPS
-MIN_NUM_STEPS_SEQ = 20
-STRIDE = 8+12 # timesteps to move from one trajectory to the next one
-TEST_PER = 0.3 # percentage for setting number of testing agents based on number of training agents per class
-MAX_TRAIN_AGENTS = 10000 #202 # further constrain the number of training agents per class
-TRAIN_SET_RATIO = None #0.8
-TEST_ON_TRAIN = True # Instead of splitting train into train and test, test on train to have all data
-NUM_TRAIN_AGENTS = 4 * 1
-NUM_TEST_AGENTS = 100
-RANDOM_TRAIN_TEST_SPLIT = False
-
-# Orig block
-# CHECKPOINT = None # None means no checkpoint will be used to fine-tune
-CHECKPOINT = '/visinf/home/vilab07/sdd/vita_epfl_causal/ynet/pretrained_models/2022_01_27_23_58_00_weights.pt'
-CONFIG_FILE_PATH = 'config/sdd_trajnet.yaml'  # yaml config file containing all the hyperparameters
 EXPERIMENT_NAME = time_stamp  # arbitrary name for this experiment
-print(f"Experiment {EXPERIMENT_NAME} has started")
+SDD_RAW_PATH = FOLDERNAME + "sdd_raw"
+CHECKPOINT = FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
+CONFIG_FILE_PATH = 'config/sdd_raw_fine_tune.yaml'  # 'config/sdd_raw_fine_tune.yaml' for training from scratch
 DATASET_NAME = 'sdd'
-if USE_RAW_SMALL:
-    TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/sdd_small/annotations'
-    VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/sdd_small/annotations'
-else:
-    TRAIN_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train_trajnet.pkl'
-    TRAIN_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/train'
-    VAL_DATA_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test_trajnet.pkl'
-    VAL_IMAGE_PATH = '/fastdata/vilab07/sdd/ynet_additional_files/data/SDD/test'    
-
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps
 NUM_GOALS = 20  # K_e
 NUM_TRAJ = 1  # K_a
-
 BATCH_SIZE = 4
+print(f"Experiment {EXPERIMENT_NAME} has started")
 
 with open(CONFIG_FILE_PATH) as file:
-    params = yaml.load(file, Loader=yaml.FullLoader)
-experiment_name = CONFIG_FILE_PATH.split('.yaml')[0].split('config/')[1]
-
-if USE_RAW_SMALL:
-    # df_train = load_SDD_small(path=SDD_SMALL_PATH)
-    df_train, df_val = load_and_window_SDD_small(path=SDD_SMALL_PATH, step=STEP,
-                                                 window_size=MIN_NUM_STEPS_SEQ, stride=STRIDE,
-                                                 train_labels=TRAIN_LABELS, test_labels=TEST_LABELS,
-                                                 test_per=TEST_PER, max_train_agents=MAX_TRAIN_AGENTS,
-                                                 train_set_ratio=TRAIN_SET_RATIO, test_on_train=TEST_ON_TRAIN,
-                                                 num_train_agents=NUM_TRAIN_AGENTS, num_test_agents=NUM_TEST_AGENTS,
-                                                 random_train_test=RANDOM_TRAIN_TEST_SPLIT)
+    params = yaml.load(file, Loader=yaml.FullLoader)    
+if params['use_raw_data']: 
+    TRAIN_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
+    VAL_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
+else:
+    TRAIN_DATA_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/train_trajnet.pkl'
+    TRAIN_IMAGE_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/train'
+    VAL_DATA_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/test_trajnet.pkl'
+    VAL_IMAGE_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/test'
+params['segmentation_model_fp'] = FOLDERNAME + 'ynet_additional_files/segmentation_models/SDD_segmentation.pth'
+if params['use_raw_data']:
+    # df_train = load_sdd_raw(path=SDD_RAW_PATH)
+    df_train, df_val = load_raw_dataset(path=SDD_RAW_PATH, step=params['step'],
+                                                 window_size=params['min_num_steps_seq'], stride=params['filter_stride'],
+                                                 train_labels=params['train_labels'], test_labels=params['test_labels'],
+                                                 test_per=params['test_per'], max_train_agents=params['max_train_agents'],
+                                                 train_set_ratio=params['train_set_ratio'], test_on_train=params['test_on_train'],
+                                                 num_train_agents=params['num_train_agents'], num_test_agents=params['num_test_agents'],
+                                                 random_train_test=params['random_train_test_split'])
 else:
     df_train = pd.read_pickle(TRAIN_DATA_PATH)
     df_val = pd.read_pickle(VAL_DATA_PATH)
@@ -72,4 +51,4 @@ if CHECKPOINT is not None:
 
 model.train(df_train, df_val, params, train_image_path=TRAIN_IMAGE_PATH, val_image_path=VAL_IMAGE_PATH,
             experiment_name=EXPERIMENT_NAME, batch_size=BATCH_SIZE, num_goals=NUM_GOALS, num_traj=NUM_TRAJ, 
-            device=None, dataset_name=DATASET_NAME, use_raw_small=USE_RAW_SMALL)
+            device=None, dataset_name=DATASET_NAME, use_raw_data=params['use_raw_data'])
