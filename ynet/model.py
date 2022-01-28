@@ -275,7 +275,7 @@ class YNetTorch(nn.Module):
 	def style_class_dim(self, x):
 		features = self.style_hat.classify(x)
 		return features
-		
+
 	# Encode the feature map vector with the given style
 	def apply_adain(self, features, style):
 		features_stylized = []
@@ -534,7 +534,7 @@ class YNet:
 	def save(self, path):
 		torch.save(self.model.state_dict(), path)
 
-	def train_style_enc(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None):
+	def train_style_enc(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -579,17 +579,37 @@ class YNet:
 
 		# Load train images and augment train data and images
 		df_train, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
-											  seg_mask=seg_mask)
+											  seg_mask=seg_mask, use_raw_data=use_raw_data)
 
 		# Load val scene images
-		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name)
+		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name, use_raw_data=use_raw_data)
+
 
 		# Initialize dataloaders
-		train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)
-		train_loader = DataLoader(train_dataset, batch_size=1, collate_fn=scene_collate, shuffle=True)
+		# train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)
+		# train_loader = DataLoader(train_dataset, batch_size=1, collate_fn=scene_collate, shuffle=True)
 
-		val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
-		val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
+		# val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
+		# val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
+
+		print(df_train)
+
+
+
+		from utils.dataloader import separate_data_label
+		df_train_list = separate_data_label(df_train)
+		train_datasets = [SceneDataset(df_train, resize=params['resize'], total_len=total_len)
+						  for df_train in df_train_list]
+		train_loaders = [DataLoader(train_dataset, batch_size=1, collate_fn=scene_collate, shuffle=True)
+						 for train_dataset in train_datasets]
+
+		df_val_list = separate_data_label(val_data)
+		val_datasets = [SceneDataset(df_val, resize=params['resize'], total_len=total_len)
+						for df_val in df_val_list]
+		val_loaders = [DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
+					   for val_dataset in val_datasets]
+
+
 
 		# Preprocess images, in particular resize, pad and normalize as semantic segmentation backbone requires
 		resize(train_images, factor=params['resize'], seg_mask=seg_mask)
@@ -623,13 +643,13 @@ class YNet:
 
 		print('Start training')
 		for e in tqdm(range(params['num_epochs']), desc='Epoch'):
-			train_loss, train_accuracy = train_style_enc(model, train_loader, train_images, e, obs_len, pred_len,
+			train_loss, train_accuracy = train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
 													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
 
 			print(f'Epoch {e}: \nTrain loss: {train_loss} \Train style accuracy: {train_accuracy}')
 
-			test_loss, test_accuracy = evaluate_style(model, val_loader, val_images, e, obs_len, pred_len,
+			test_loss, test_accuracy = evaluate_style(model, val_loaders, val_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
 													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
 
