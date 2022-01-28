@@ -50,6 +50,25 @@ class YNetEncoder(nn.Module):
 			features.append(x)
 		return features
 
+def calc_mean_std(feat, eps=1e-5):
+    # eps is a small value added to the variance to avoid divide-by-zero.
+    size = feat.size()
+    assert (len(size) == 4)
+    N, C = size[:2]
+    feat_var = feat.view(N, C, -1).var(dim=2) + eps
+    feat_std = feat_var.sqrt().view(N, C, 1, 1)
+    feat_mean = feat.view(N, C, -1).mean(dim=2).view(N, C, 1, 1)
+    return feat_mean, feat_std
+
+def adaptive_instance_normalization(content_feat, style_feat):
+    # assert (content_feat.size()[:2] == style_feat.size()[:2])
+    size = content_feat.size()
+    style_mean, style_std = calc_mean_std(style_feat)
+    content_mean, content_std = calc_mean_std(content_feat)
+
+    normalized_feat = (content_feat - content_mean.expand(
+        size)) / content_std.expand(size)
+    return normalized_feat * style_std.expand(size) + style_mean.expand(size)
 
 class YNetDecoder(nn.Module):
 	def __init__(self, encoder_channels, decoder_channels, output_len, traj=False):
@@ -117,7 +136,7 @@ class YNetDecoder(nn.Module):
 			x = module(x)  # Conv
 		x = self.predictor(x)  # last predictor layer
 		return x
-
+ 
 
 class YNetTorch(nn.Module):
 	def __init__(self, obs_len, pred_len, segmentation_model_fp, use_features_only=False, semantic_classes=6,
@@ -168,6 +187,13 @@ class YNetTorch(nn.Module):
 	def pred_features(self, x):
 		features = self.encoder(x)
 		return features
+
+	# Encode the feature map vector with the given style
+	def apply_adain(self, features, style):
+		features_stylized = []
+		for x, y in zip(features, style):
+			features_stylized.append(adaptive_instance_normalization(x, y))
+		return features_stylized
 
 	# Softmax for Image data as in dim=NxCxHxW, returns softmax image shape=NxCxHxW
 	def softmax(self, x):
@@ -397,7 +423,7 @@ class YNet:
 
 		print("TTST setting:", params['use_TTST'])
 		print('Start testing')
-		for e in range(rounds): # tqdm(, desc='Round'):
+		for e in tqdm(range(rounds), desc='Round'):
 			test_ADE, test_FDE = evaluate(model, test_loader, test_images, num_goals, num_traj,
 										  obs_len=obs_len, batch_size=batch_size,
 										  device=device, input_template=input_template,

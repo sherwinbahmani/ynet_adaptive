@@ -71,6 +71,9 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 			# Calculate features
 			features = model.pred_features(feature_input)
 
+			# Style integrator
+			features = model.apply_adain(features, features)
+
 			# Predict goal and waypoint probability distribution
 			pred_goal_map = model.pred_goal(features)
 			goal_loss = criterion(pred_goal_map, gt_future_map) * params['loss_scale']  # BCEWithLogitsLoss
