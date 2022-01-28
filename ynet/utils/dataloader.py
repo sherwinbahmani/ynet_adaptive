@@ -1,7 +1,9 @@
 from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
 import torch
+import numpy as np
 
 class SceneDataset(Dataset):
 	def __init__(self, data, resize, total_len):
@@ -44,3 +46,8 @@ def scene_collate(batch):
 		meta.append(_batch[1])
 		scene.append(_batch[2])
 	return torch.Tensor(trajectories).squeeze(0), meta, scene[0]
+
+def separate_data_label(df):
+	labels = np.sort(np.unique(df["label"]))
+	df_list = [df[df["label"] == label] for label in labels]
+	return df_list

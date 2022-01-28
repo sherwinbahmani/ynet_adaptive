@@ -298,7 +298,20 @@ class YNet:
 
 		val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
 		val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
+		##### Create list of data loaders (instead of line 270 - 274)
+		# from utils.dataloader import separate_data_label
+		# df_train_list = separate_data_label(df_train)
+		# train_datasets = [SceneDataset(df_train, resize=params['resize'], total_len=total_len)
+		# 				  for df_train in df_train_list]
+		# train_loaders = [DataLoader(train_dataset, batch_size=1, collate_fn=scene_collate, shuffle=True)
+		# 				 for train_dataset in train_datasets]
 
+		# df_val_list = separate_data_label(val_data)
+		# val_datasets = [SceneDataset(df_val, resize=params['resize'], total_len=total_len)
+		# 				for df_val in df_val_list]
+		# val_loaders = [DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
+		# 			   for val_dataset in val_datasets]
+		#####
 		# Preprocess images, in particular resize, pad and normalize as semantic segmentation backbone requires
 		resize(train_images, factor=params['resize'], seg_mask=seg_mask)
 		pad(train_images, division_factor=self.division_factor)  # make sure that image shape is divisible by 32, for UNet segmentation
