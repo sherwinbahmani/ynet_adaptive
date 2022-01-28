@@ -11,7 +11,7 @@ from utils.image_utils import create_gaussian_heatmap_template, create_dist_mat,
 	preprocess_image_for_segmentation, pad, resize
 from utils.dataloader import SceneDataset, scene_collate
 from test import evaluate
-from train import train, train_style_enc
+from train import train, train_style_enc, train_all
 
 
 class StyleHat (nn.Module):
@@ -304,7 +304,7 @@ class YNet:
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
-	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None):
+	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, with_style=False):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -397,9 +397,15 @@ class YNet:
 
 		print('Start training')
 		for e in tqdm(range(params['num_epochs']), desc='Epoch'):
-			train_ADE, train_FDE, train_loss = train(model, train_loader, train_images, e, obs_len, pred_len,
+			if with_style:
+				train_loss, train_accuracy = train_style_enc(model, train_loader, train_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
-													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
+													 input_template, optimizer, criterion, dataset_name, self.homo_mat, style_only=False)
+				train_ADE, train_FDE = 0, 0
+			else:
+				train_ADE, train_FDE, train_loss = train(model, train_loader, train_images, e, obs_len, pred_len,
+														batch_size, params, gt_template, device,
+														input_template, optimizer, criterion, dataset_name, self.homo_mat)
 			self.train_ADE.append(train_ADE)
 			self.train_FDE.append(train_FDE)
 
@@ -410,7 +416,7 @@ class YNet:
 										waypoints=params['waypoints'], resize=params['resize'],
 										temperature=params['temperature'], use_TTST=False,
 										use_CWS=False, dataset_name=dataset_name,
-										homo_mat=self.homo_mat, mode='val')
+										homo_mat=self.homo_mat, mode='val', with_style=with_style)
 			print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
 			self.val_ADE.append(val_ADE)
 			self.val_FDE.append(val_FDE)
@@ -596,25 +602,11 @@ class YNet:
 
 		print('Start training')
 		for e in tqdm(range(params['num_epochs']), desc='Epoch'):
-			train_ADE, train_FDE, train_loss = train_style_enc(model, train_loader, train_images, e, obs_len, pred_len,
+			train_loss, train_accuracy = train_style_enc(model, train_loader, train_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
 													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
-			# self.train_ADE.append(train_ADE)
-			# self.train_FDE.append(train_FDE)
 
-			# # For faster inference, we don't use TTST and CWS here, only for the test set evaluation
-			# val_ADE, val_FDE = evaluate(model, val_loader, val_images, num_goals, num_traj,
-			# 							obs_len=obs_len, batch_size=batch_size,
-			# 							device=device, input_template=input_template,
-			# 							waypoints=params['waypoints'], resize=params['resize'],
-			# 							temperature=params['temperature'], use_TTST=False,
-			# 							use_CWS=False, dataset_name=dataset_name,
-			# 							homo_mat=self.homo_mat, mode='val')
-			# print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
-			# self.val_ADE.append(val_ADE)
-			# self.val_FDE.append(val_FDE)
-
-			# if val_ADE < best_test_ADE:
-			# 	print(f'Best Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
-			# 	torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
-			# 	best_test_ADE = val_ADE
+			if best_train_accuracy < train_accuracy:
+				print(f'Best Epoch {e}: \nVal Accuracy: {train_accuracy}')
+				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
+				best_train_accuracy = train_accuracy

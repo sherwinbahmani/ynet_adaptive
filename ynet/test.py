@@ -30,7 +30,7 @@ def torch_multivariate_gaussian_heatmap(coordinates, H, W, dist, sigma_factor, r
 	return kernel / kernel.sum()
 
 
-def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_size, device, input_template, waypoints, resize, temperature, use_TTST=False, use_CWS=False, rel_thresh=0.002, CWS_params=None, dataset_name=None, homo_mat=None, mode='val'):
+def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_size, device, input_template, waypoints, resize, temperature, use_TTST=False, use_CWS=False, rel_thresh=0.002, CWS_params=None, dataset_name=None, homo_mat=None, mode='val', with_style=False):
 	"""
 
 	:param model: torch model
@@ -88,6 +88,18 @@ def evaluate(model, val_loader, val_images, num_goals, num_traj, obs_len, batch_
 				# Calculate features
 				feature_input = torch.cat([semantic_image, observed_map], dim=1)
 				features = model.pred_features(feature_input)
+
+				if with_style:
+					observed_style = trajectory[i:i+batch_size, :, :].reshape(-1, 2).cpu().numpy()
+					observed_map_style = get_patch(input_template, observed_style, H, W)
+					observed_map_style = torch.stack(observed_map_style).reshape([-1, obs_len, H, W])
+
+					gt_future_style = trajectory[i:i+batch_size, obs_len:].to(device)
+					semantic_image_style = scene_image.expand(observed_map_style.shape[0], -1, -1, -1)
+
+					feature_input_style = torch.cat([semantic_image, observed_map], dim=1)
+					features = model.pred_features(feature_input)
+
 
 				# Predict goal and waypoint probability distributions
 				pred_waypoint_map = model.pred_goal(features)

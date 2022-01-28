@@ -113,7 +113,7 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 	return train_ADE.item(), train_FDE.item(), train_loss.item()
 
 
-def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat):
+def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat, style_only=True):
 	"""
 	Run training for one epoch
 
@@ -125,7 +125,7 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 	:param gt_template:  precalculated Gaussian heatmap template as torch.Tensor
 	:return: train_ADE, train_FDE, train_loss for one epoch
 	"""
-	train_loss = 0
+	train_loss, train_accuracy = [], []
 	model.train()
 
 	# IMPORTANT
@@ -149,7 +149,7 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 
 			# Stop training after 25 batches to increase evaluation frequency
 			if dataset_name == 'sdd' and obs_len == 8 and batch > 25:				# TODO: why's it?
-				return train_loss.item()
+				return torch.cat(train_loss).mean().item(), torch.cat(train_accuracy).mean().item()
 
 			# Get scene image and apply semantic segmentation
 			if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
@@ -164,7 +164,7 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 
 			low_dim_style_list = []
 			classified_style_list = []
-
+			loss = 0
 			
 			for train_images, scene_image, scene, trajectory in zip(train_images_list, scene_images, scenes, trajectories):
 
@@ -200,8 +200,26 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 				class_features = model.style_class_dim(low_dim_style_features).detach()
 				classified_style_list.append(class_features)
 
+				# Add normal loss if also training the rest
+				if not style_only:
+					features = model.pred_features(feature_input) 
 
-			loss = 0
+					# Predict goal and waypoint probability distribution
+					pred_goal_map = model.pred_goal(features)
+					goal_loss = criterion(pred_goal_map, gt_future_map) * params['loss_scale']  # BCEWithLogitsLoss
+
+					# Prepare (downsample) ground-truth goal and trajectory heatmap representation for conditioning trajectory decoder
+					gt_waypoints_maps_downsampled = [nn.AvgPool2d(kernel_size=2**i, stride=2**i)(gt_waypoint_map) for i in range(1, len(features))]
+					gt_waypoints_maps_downsampled = [gt_waypoint_map] + gt_waypoints_maps_downsampled
+
+					# Predict trajectory distribution conditioned on goal and waypoints
+					traj_input = [torch.cat([feature, goal], dim=1) for feature, goal in zip(features, gt_waypoints_maps_downsampled)]
+					pred_traj_map = model.pred_traj(traj_input)
+					traj_loss = criterion(pred_traj_map, gt_future_map) * params['loss_scale']  # BCEWithLogitsLoss
+
+					# Backprop
+					loss += goal_loss + traj_loss
+
 
 			# Contrastive loss
 			input_features = torch.stack(low_dim_style_list)
@@ -220,6 +238,10 @@ def train_style_enc(model, train_loaders, train_images_list, e, obs_len, pred_le
 			loss.backward()
 			optimizer.step()
 
-			train_loss += loss.detach()
+			# Metrics
+			classifier_prediction = classifier_features.argmax(dim=-1)
+			accuracy = ((classifier_prediction == classifier_labels) * 1).to(float).mean()
+			train_accuracy.append(accuracy.detach())
+			train_loss.append(loss.detach())
 
-	return train_loss.item()
+	return torch.cat(train_loss).mean().item(), torch.cat(train_accuracy).mean().item()
