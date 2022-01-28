@@ -39,15 +39,17 @@ class StyleEncoder(nn.Module):
 				nn.Conv2d(channels[i+1], channels[i+1], kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
 				nn.ReLU(inplace=True)))
 
-		# # Last MaxPool layer before passing the features into decoder
+		# TODO: dimension reduction
+
 		# self.stages.append(nn.Sequential(nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)))
+		# self.stages.append(nn.Sequential(
+		# 					nn.Conv2d(channels[i], channels[i+1], kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+		# 					nn.ReLU(inplace=True),
+		# 					))
 
 	def forward(self, x):
-		# Saves the feature maps Tensor of each layer into a list, as we will later need them again for the decoder
-		# features = []
 		for stage in self.stages:
 			x = stage(x)
-			# features.append(x)
 		return x
 
 
