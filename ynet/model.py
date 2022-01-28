@@ -14,6 +14,43 @@ from test import evaluate
 from train import train
 
 
+class StyleEncoder(nn.Module):
+	def __init__(self, in_channels, channels=(64, 128, 256, 512, 512)):
+		"""
+		Encoder model
+		:param in_channels: int, semantic_classes + obs_len
+		:param channels: list, hidden layer channels
+		"""
+		super(StyleEncoder, self).__init__()
+		self.stages = nn.ModuleList()
+
+		# First block
+		self.stages.append(nn.Sequential(
+			nn.Conv2d(in_channels, channels[0], kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+			nn.ReLU(inplace=True),
+		))
+
+		# Subsequent blocks, each starting with MaxPool
+		for i in range(len(channels)-1):
+			self.stages.append(nn.Sequential(
+				nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False),
+				nn.Conv2d(channels[i], channels[i+1], kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+				nn.ReLU(inplace=True),
+				nn.Conv2d(channels[i+1], channels[i+1], kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
+				nn.ReLU(inplace=True)))
+
+		# # Last MaxPool layer before passing the features into decoder
+		# self.stages.append(nn.Sequential(nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False)))
+
+	def forward(self, x):
+		# Saves the feature maps Tensor of each layer into a list, as we will later need them again for the decoder
+		features = []
+		for stage in self.stages:
+			x = stage(x)
+			features.append(x)
+		return features
+
+
 class YNetEncoder(nn.Module):
 	def __init__(self, in_channels, channels=(64, 128, 256, 512, 512)):
 		"""
