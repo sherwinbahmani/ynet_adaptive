@@ -7,11 +7,12 @@ from model import YNet
 from utils.preprocessing import load_raw_dataset
 
 FOLDERNAME = './'
+FOLDERNAME = "/fastdata/vilab07/sdd/"
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 EXPERIMENT_NAME = time_stamp  # arbitrary name for this experiment
 SDD_RAW_PATH = FOLDERNAME + "sdd_raw"
 CHECKPOINT = FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
-CONFIG_FILE_PATH = 'config/sdd_raw_fine_tune.yaml'  # 'config/sdd_raw_fine_tune.yaml' for training from scratch
+CONFIG_FILE_PATH = 'config/sdd_raw_fine_tune.yaml'  # 'config/sdd_raw_train.yaml' for training from scratch
 DATASET_NAME = 'sdd'
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps

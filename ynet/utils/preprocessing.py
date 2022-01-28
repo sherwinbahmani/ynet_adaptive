@@ -247,8 +247,8 @@ def load_raw_dataset(step, window_size, stride, path=None, mode='train', pickle_
 	else:
 		df_test = filter_labels(df, test_labels)
 	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=num_test_agents)
-	df_train = df_train.drop(columns=['label'])
-	df_test= df_test.drop(columns=['label'])
+	# df_train = df_train.drop(columns=['label'])
+	# df_test= df_test.drop(columns=['label'])
 	# compute_velocity_dist(df_train)
 	# compute_velocity_dist(df_test)
 	return df_train, df_test
@@ -299,12 +299,14 @@ def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, n
 	df_train = df_train[np.array([df_train["metaId"] == meta_id for meta_id in meta_ids_keep]).any(axis=0)]
 	# Filter test set based on given percentage
 	meta_ids = np.unique(df_test["metaId"].values)
-	mask = np.zeros_like(meta_ids).astype(bool)
-	min_num_test = min(int(min_num * test_per), len(meta_ids)) if num_test_agents is None else num_test_agents
-	mask[:min_num_test] = True
-	np.random.shuffle(mask)
-	df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)]
-	print(f"{min_num} agents for each training class, {min_num_test} agents for test class")
+	labels = np.unique(df_test["label"]) 
+	num_agents_tot = [len(df_test[df_test["label"] == label]) for label in labels]
+	num_steps_agent = round(sum(num_agents_tot)/len(meta_ids))
+	min_num_label = min(num_agents_tot)//num_steps_agent if num_test_agents is None else num_test_agents
+	meta_ids_final = np.array([np.unique(df_test[df_test["label"] == label]["metaId"].values)[:min_num_label]
+								for label in labels]).reshape(-1)
+	df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids_final]).any(axis=0)]
+	print(f"{min_num} agents for each training class, {min_num_label} agents for test class")
 	return df_train, df_test
 
 def split_df(df, ratio=None, test_on_train=False, num_train_agents=None, num_test_agents=None, random=True, random_train_test=True):
