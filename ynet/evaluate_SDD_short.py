@@ -7,10 +7,11 @@ import time
 
 tic = time.time()
 
-FOLDERNAME = './'
+# FOLDERNAME = './'
+FOLDERNAME = "/fastdata/vilab07/sdd/"
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 CHECKPOINT = FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
-CONFIG_FILE_PATH = 'config/sdd_raw_fine_tune.yaml'  # yaml config file containing all the hyperparameters
+CONFIG_FILE_PATH = 'config/sdd_raw_eval.yaml'  # yaml config file containing all the hyperparameters
 EXPERIMENT_NAME = time_stamp  # arbitrary name for this experiment
 DATASET_NAME = 'sdd'
 SDD_RAW_PATH = FOLDERNAME + "sdd_raw"

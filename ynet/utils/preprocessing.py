@@ -280,48 +280,63 @@ def load_and_window_SDD(step, window_size, stride, path=None, mode='train', pick
 	return df
 
 def filter_labels(df, labels):
-	df = df[np.array([df['label'].values == label for label in labels]).any(axis=0)]
-	return df
+	if labels == []:
+		return None
+	else:
+		return df[np.array([df['label'].values == label for label in labels]).any(axis=0)]
 
 def reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=None):
-	labels = np.unique(df_train["label"].values)
-	# Filter based on the least occuring label across all scenes
-	min_num = min([len(np.unique(df_train[df_train["label"] == label]["metaId"].values))
-				   for label in labels] + [max_train_agents])
-	meta_ids_keep = []
-	for label in labels:
-		meta_ids = np.unique(df_train[df_train["label"] == label]["metaId"].values)
-		mask = np.zeros_like(meta_ids).astype(bool)
-		mask[:min_num] = True
-		np.random.shuffle(mask)
-		meta_ids_keep.append(meta_ids[mask])
-	meta_ids_keep = np.array(meta_ids_keep).reshape(-1)
-	df_train = df_train[np.array([df_train["metaId"] == meta_id for meta_id in meta_ids_keep]).any(axis=0)]
+	if df_train is not None:
+		labels = np.unique(df_train["label"].values)
+		# Filter based on the least occuring label across all scenes
+		min_num_train = min([len(np.unique(df_train[df_train["label"] == label]["metaId"].values))
+					for label in labels] + [0 if max_train_agents is None else max_train_agents])
+		meta_ids_keep = []
+		for label in labels:
+			meta_ids = np.unique(df_train[df_train["label"] == label]["metaId"].values)
+			mask = np.zeros_like(meta_ids).astype(bool)
+			mask[:min_num_train] = True
+			np.random.shuffle(mask)
+			meta_ids_keep.append(meta_ids[mask])
+		meta_ids_keep = np.array(meta_ids_keep).reshape(-1)
+		df_train = df_train[np.array([df_train["metaId"] == meta_id for meta_id in meta_ids_keep]).any(axis=0)]
+	else:
+		min_num_train = 0
 	# Filter test set based on given percentage
-	meta_ids = np.unique(df_test["metaId"].values)
-	labels = np.unique(df_test["label"]) 
-	num_agents_tot = [len(df_test[df_test["label"] == label]) for label in labels]
-	num_steps_agent = round(sum(num_agents_tot)/len(meta_ids))
-	min_num_label = min(num_agents_tot)//num_steps_agent if num_test_agents is None else num_test_agents
-	meta_ids_final = np.array([np.unique(df_test[df_test["label"] == label]["metaId"].values)[:min_num_label]
-								for label in labels]).reshape(-1)
-	df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids_final]).any(axis=0)]
-	print(f"{min_num} agents for each training class, {min_num_label} agents for test class")
+	if df_test is not None:
+		meta_ids = np.unique(df_test["metaId"].values)
+		labels = np.unique(df_test["label"]) 
+		num_agents_tot = [len(df_test[df_test["label"] == label]) for label in labels]
+		num_steps_agent = round(sum(num_agents_tot)/len(meta_ids))
+		min_num_label = min(num_agents_tot)//num_steps_agent if num_test_agents is None else num_test_agents
+		meta_ids_final = np.array([np.unique(df_test[df_test["label"] == label]["metaId"].values)[:min_num_label]
+									for label in labels]).reshape(-1)
+		df_test = df_test[np.array([df_test["metaId"] == meta_id for meta_id in meta_ids_final]).any(axis=0)]
+		print(f"{min_num_train} agents for each training class, {min_num_label} agents for test class")
 	return df_train, df_test
 
 def split_df(df, ratio=None, test_on_train=False, num_train_agents=None, num_test_agents=None, random=True, random_train_test=True):
+	random_train_test = True
 	meta_ids = np.unique(df["metaId"].values)
-	mask = np.ones_like(meta_ids).astype(bool)
 	if ratio is not None:
 		num_test = int(len(meta_ids)*(1-ratio))
-	elif num_train_agents is not None and num_test_agents is not None:
+	elif num_test_agents is not None:
 		num_test = num_test_agents
 	else:
 		raise ValueError
-	mask[:num_test] = False
-	if random_train_test:
-		np.random.shuffle(mask)
-	split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
+
+	if test_on_train and num_train_agents is None and num_test_agents is not None:
+		mask = np.zeros_like(meta_ids).astype(bool)
+		mask[:num_test] = True
+		split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
+		return df, df[split_mask]
+	else:
+		mask = np.ones_like(meta_ids).astype(bool)
+		mask[:num_test] = False
+		if random_train_test:
+			np.random.shuffle(mask)
+		split_mask = np.array([df["metaId"] == meta_id for meta_id in meta_ids[mask]]).any(axis=0)
+
 	if test_on_train and num_train_agents is None and num_test_agents is None:
 		return df, df[split_mask == False]
 	elif test_on_train and num_train_agents is not None and num_test_agents is not None:
