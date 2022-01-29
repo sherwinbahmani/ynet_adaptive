@@ -55,7 +55,7 @@ min_num_steps_seq: 20
 filter_stride: 20 # timesteps to move from one trajectory to the next one
 test_per: 0.3 # percentage for setting number of testing agents based on number of training agents per class
 max_train_agents: 10000 #202 # further constrain the number of training agents per class
-train_set_ratio: 0.3
+train_set_ratio: 0.7
 test_on_train: True # Instead of splitting train into train and test, test on train to have all data
 num_train_agents: null
 num_test_agents: null

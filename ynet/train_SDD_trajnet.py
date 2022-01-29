@@ -37,8 +37,8 @@ with open(CONFIG_FILE_PATH) as file:
 #     VAL_IMAGE_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/test'
 TRAIN_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
 VAL_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
-TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_13_45_train.pkl'
-VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_13_45_val.pkl'
+TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_train.pkl'
+VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_val.pkl'
     
 params['segmentation_model_fp'] = FOLDERNAME + 'ynet_additional_files/segmentation_models/SDD_segmentation.pth'
 # if params['use_raw_data']:
