@@ -3,6 +3,9 @@ import pandas as pd
 import os
 import cv2
 from copy import deepcopy
+import math
+import matplotlib.pyplot as plt
+import pathlib
 
 def load_sdd_raw(path):
 	'''
@@ -106,10 +109,6 @@ def load_SDD(path='data/SDD/', mode='train'):
 	data['metaId'] = [rec_trackId2metaId[i] for i in data['rec&trackId']]
 	data = data.drop(columns=['rec&trackId'])
 	return data
-
-def compute_velocity_dist(df):
-	pass
-
 
 def mask_step(x, step):
 	"""
@@ -249,8 +248,6 @@ def load_raw_dataset(step, window_size, stride, path=None, mode='train', pickle_
 	df_train, df_test = reduce_least_occuring_label(df_train, df_test, test_per, max_train_agents, num_test_agents=num_test_agents)
 	# df_train = df_train.drop(columns=['label'])
 	# df_test= df_test.drop(columns=['label'])
-	# compute_velocity_dist(df_train)
-	# compute_velocity_dist(df_test)
 	return df_train, df_test
 
 def load_and_window_SDD(step, window_size, stride, path=None, mode='train', pickle_path=None):
@@ -699,8 +696,63 @@ def load_and_window_inD(step, window_size, stride, scenes=[1,2,3,4], pickle=Fals
 
 	return df
 
-# train-scenes are 2, 3, 4
-# test scene is 1
+def compute_vel_labels(df):
+	vel_labels = {}
+	meta_ids = np.unique(df["metaId"].values)
+	for meta_id in meta_ids:
+		df_meta = df[df["metaId"] == meta_id]
+		x = df_meta["x"].values
+		y = df_meta["y"].values
+		unique_labels = np.unique(df_meta["label"].values)
+		assert len(unique_labels) == 1
+		label = unique_labels[0]
+		frame_steps = []
+		for frame_idx, frame in enumerate(df_meta["frame"].values):
+			if frame_idx != len(df_meta["frame"].values) - 1:
+				frame_steps.append(df_meta["frame"].values[frame_idx + 1] - frame)
+		unique_frame_step = np.unique(frame_steps)
+		assert len(unique_frame_step) == 1
+		frame_step = unique_frame_step[0]
+		vel = []
+		for i in range(len(x)):
+			if i != len(x) - 1:
+				vel_i = math.sqrt(((x[i+1] - x[i])/frame_step)**2 + ((y[i+1] - y[i])/frame_step)**2)
+				vel.append(vel_i)
+		if label not in vel_labels:
+			vel_labels[label] = []
+		vel_labels[label] += vel
+	return vel_labels
 
-# df = load_and_window_inD(step=25, window_size=35, stride=35, scenes=[1], pickle=False)
-# df.to_pickle('test.pickle')
+def create_vel_histograms(df, out_dir):
+	vel_labels = compute_vel_labels(df)
+	vel_all = []
+	# Visualize data
+	for label, vel_label in vel_labels.items():
+		plot_histogram(vel_label, label, out_dir)
+		vel_all += vel_label
+
+def plot_histogram(vel, label, out_dir):
+	fig = plt.figure()
+	mean = np.round(np.mean(vel), 2)
+	std = np.round(np.std(vel), 2)
+	min_val = np.round(np.min(vel), 2)
+	max_val = np.round(np.max(vel), 2)
+	num_zeros = np.round((np.array(vel) == 0).sum()/len(vel), 2)
+	vel_label = np.sort(vel)[int(len(vel)*0.00):int(len(vel)*0.99)]
+	vel_label = vel_label[vel_label != 0]
+	plt.hist(vel_label, bins=100)
+	plt.title(f"{label}, Mean: {mean}, Std: {std}, Min: {min_val}, Max: {max_val}, Zeros: {num_zeros}")
+	pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
+	plt.savefig(os.path.join(out_dir, label))
+	plt.close(fig)
+
+if __name__ == "__main__":
+	FOLDERNAME = "/fastdata/vilab07/sdd/"
+	# TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_train.pkl'
+	# VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_val.pkl'
+	# TRAIN_DATA_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/train_trajnet.pkl'
+	# VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_val.pkl'
+	TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/complete.pkl'
+	OUT_DIR = "./visu/vel/complete"
+	df_train = pd.read_pickle(TRAIN_DATA_PATH)
+	create_vel_histograms(df_train, OUT_DIR)
