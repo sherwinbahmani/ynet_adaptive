@@ -3,6 +3,7 @@ import torch.nn as nn
 from utils.image_utils import get_patch, image2world
 from loss import contrastive_loss
 from torch.nn.functional import cross_entropy
+from tqdm import tqdm
 
 
 def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, params, gt_template, device, input_template, optimizer, criterion, dataset_name, homo_mat):
@@ -134,7 +135,7 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 
 	train_iters = [iter(tl) for tl in train_loaders]
 
-	while batch < len(train_loaders[0]):
+	for _ in tqdm(range(len(train_loaders[0]))):
 
 		batch += 1
 		loss = 0
@@ -147,8 +148,8 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 			scenes.append(scenes)
 
 			# Stop training after 25 batches to increase evaluation frequency
-			if dataset_name == 'sdd' and obs_len == 8 and batch > 25:				# TODO: why's it?
-				return torch.cat(train_loss).mean().item(), torch.cat(train_accuracy).mean().item()
+			if dataset_name == 'sdd' and obs_len == 8 and batch > 150:				# TODO: why's it?
+				return torch.mean(torch.stack(train_loss)).item(), torch.mean(torch.stack(train_accuracy)).item()
 
 			# Get scene image and apply semantic segmentation
 			if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
@@ -188,7 +189,7 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 				low_dim_style_list.append(low_dim_style_features)
 
 				# For classification
-				class_features = model.style_class_dim(low_dim_style_features).detach()
+				class_features = model.style_class_dim(low_dim_style_features.detach())
 				classified_style_list.append(class_features)
 
 				# Add normal loss if also training the rest
@@ -230,19 +231,22 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 
 			# fix size issue
 			for i in range(len(low_dim_style_list)):
-				print(low_dim_style_list[i].shape, torch.tensor(duplicate_size(low_dim_style_list[i])))
-				low_dim_style_list[i] =torch.repeat_interleave(low_dim_style_list[i], torch.tensor(duplicate_size(low_dim_style_list[i])), dim=0)
+				# print(low_dim_style_list[i].shape, torch.tensor(duplicate_size(low_dim_style_list[i])))
+				low_dim_style_list[i] =torch.repeat_interleave(low_dim_style_list[i], torch.tensor(duplicate_size(low_dim_style_list[i])).to(device), dim=0)
 
 			# Contrastive loss
 			input_features = torch.stack(low_dim_style_list)
-			input_labels = torch.arange(len(train_loaders)).unsqueeze(dim=2).to(device)
+			input_labels = torch.arange(len(train_loaders)).unsqueeze(dim=1).to(device)
 			loss += contrastive_loss(input_features, input_labels)
 
 			# Classifier
-			classifier_features = torch.cat(classified_style_list)
-			classifier_labels = torch.stack([
+			# print('hello')
+			# for i in classified_style_list: print(i.shape)
+			classifier_features = torch.cat(classified_style_list, dim=0)
+			classifier_labels = torch.cat([
 				torch.ones(feat.shape[0]) * i
-			] for i, feat in classified_style_list).to(device)
+			for i, feat in enumerate(classified_style_list)], dim=0).to(device).long()
+			# print('sizes', classifier_features.shape, classifier_labels.shape)
 			loss += cross_entropy(classifier_features, classifier_labels)
 
 			# Backpropagate 

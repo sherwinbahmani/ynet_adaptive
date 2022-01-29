@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 from utils.image_utils import get_patch, sampling, image2world
 from utils.kmeans import kmeans
+from tqdm import tqdm
 
 
 def torch_multivariate_gaussian_heatmap(coordinates, H, W, dist, sigma_factor, ratio, device, rot=False):
@@ -243,6 +244,126 @@ def evaluate_style(model, train_loaders, train_images, e, obs_len, pred_len, bat
 	:param gt_template:  precalculated Gaussian heatmap template as torch.Tensor
 	:return: train_ADE, train_FDE, train_loss for one epoch
 	"""
+	train_accuracy = []
+	model.train()
+	batch = 0
+
+	train_iters = [iter(tl) for tl in train_loaders]
+
+	with torch.no_grad():
+		for _ in tqdm(range(max([len(tl) for tl in train_loaders]))):
+
+			batch += 1
+			scene_images, trajectories, scenes, labels = [], [], [], []
+
+			for i, train_iter in enumerate(train_iters):
+
+				try:
+					(trajectory, meta, scene) = next(train_iter)
+				except:
+					continue
+
+				trajectories.append(trajectory)
+				scenes.append(scenes)
+
+				# Get scene image and apply semantic segmentation
+				if e < params['unfreeze']:  # before unfreeze only need to do semantic segmentation once
+					model.eval()
+					scene_image = train_images[scene].to(device).unsqueeze(0)
+					scene_images.append(model.segmentation(scene_image))
+					model.train()
+				
+				labels.append(i)
+
+			len_min_trajectories = min([len(traj) for traj in trajectories])
+
+			for i in range(0, len_min_trajectories, batch_size):
+
+				low_dim_style_list = []
+				classified_style_list = []
+				loss = 0
+				
+				for scene_image, scene, trajectory in zip(scene_images, scenes, trajectories):
+
+					if e >= params['unfreeze']:
+						scene_image = train_images[scene].to(device).unsqueeze(0)
+						scene_image = model.segmentation(scene_image)
+
+					# Create Heatmaps for past and ground-truth future trajectories
+					_, _, H, W = scene_image.shape  # image shape
+
+					observed_style = trajectory[i:i+batch_size, :, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION 
+					observed_map_style = get_patch(input_template, observed_style, H, W)
+					observed_map_style = torch.stack(observed_map_style).reshape([-1, trajectory.shape[1], H, W])
+
+					# Concatenate heatmap and semantic map
+					semantic_map = scene_image.expand(observed_map_style.shape[0], -1, -1, -1)  # expand to match heatmap size
+					feature_input = torch.cat([semantic_map, observed_map_style], dim=1)
+
+					# Forward pass
+					style_features = model.style_features(feature_input)
+					low_dim_style_features = model.style_low_dim(style_features)
+					low_dim_style_list.append(low_dim_style_features)
+
+					# For classification
+					class_features = model.style_class_dim(low_dim_style_features.detach())
+					classified_style_list.append(class_features)
+
+					# Add normal loss if also training the rest
+					if not style_only:
+
+						observed = trajectory[i:i+batch_size, :obs_len, :].reshape(-1, 2).cpu().numpy() # NO OBS LENGTH TO KEEP ENTIRE OBSERVATION 
+						observed_map = get_patch(input_template, observed, H, W)
+						observed_map = torch.stack(observed_map).reshape([-1, obs_len, H, W])
+
+						gt_future = trajectory[i:i + batch_size, obs_len:].to(device)
+						gt_future_map = get_patch(gt_template, gt_future.reshape(-1, 2).cpu().numpy(), H, W)
+						gt_future_map = torch.stack(gt_future_map).reshape([-1, pred_len, H, W])
+
+						gt_waypoints = gt_future[:, params['waypoints']]
+						gt_waypoint_map = get_patch(input_template, gt_waypoints.reshape(-1, 2).cpu().numpy(), H, W)
+						gt_waypoint_map = torch.stack(gt_waypoint_map).reshape([-1, gt_waypoints.shape[1], H, W])
+
+						# Concatenate heatmap and semantic map
+						semantic_map = scene_image.expand(observed_map.shape[0], -1, -1, -1)  # expand to match heatmap size
+						feature_input = torch.cat([semantic_map, observed_map], dim=1)
+
+						features = model.pred_features(feature_input) 
+
+						# Predict goal and waypoint probability distribution
+						pred_goal_map = model.pred_goal(features)
+						goal_loss = criterion(pred_goal_map, gt_future_map) * params['loss_scale']  # BCEWithLogitsLoss
+
+						# Prepare (downsample) ground-truth goal and trajectory heatmap representation for conditioning trajectory decoder
+						gt_waypoints_maps_downsampled = [nn.AvgPool2d(kernel_size=2**i, stride=2**i)(gt_waypoint_map) for i in range(1, len(features))]
+						gt_waypoints_maps_downsampled = [gt_waypoint_map] + gt_waypoints_maps_downsampled
+
+						# Predict trajectory distribution conditioned on goal and waypoints
+						traj_input = [torch.cat([feature, goal], dim=1) for feature, goal in zip(features, gt_waypoints_maps_downsampled)]
+						pred_traj_map = model.pred_traj(traj_input)
+						traj_loss = criterion(pred_traj_map, gt_future_map) * params['loss_scale']  # BCEWithLogitsLoss
+
+						# Backprop
+						loss += goal_loss + traj_loss
+
+				# Classifier
+				classifier_features = torch.cat(classified_style_list, dim=0)
+				classifier_labels = torch.cat([
+					torch.ones(feat.shape[0]) * i
+				for i, feat in zip(labels, classified_style_list)], dim=0).to(device).long()
+				# print('sizes', classifier_features.shape, classifier_labels.shape)
+
+				# Metrics
+				classifier_prediction = classifier_features.argmax(dim=-1)
+				accuracy = ((classifier_prediction == classifier_labels) * 1).to(float).mean()
+				train_accuracy.append(accuracy.detach())
+
+	return None, torch.mean(torch.stack(train_accuracy)).item()
+
+
+
+
+
 	test_accuracy = []
 	model.eval()
 	batch = 0

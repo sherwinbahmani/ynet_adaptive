@@ -32,6 +32,8 @@ NUM_TRAJ = 1  # K_a
 ROUNDS = 1  # Y-net is stochastic. How often to evaluate the whole dataset
 BATCH_SIZE = 8
 
+
+
 if params['use_raw_data']:
     train_data, val_data = load_raw_dataset(path=SDD_RAW_PATH, step=params['step'],
                                   window_size=params['min_num_steps_seq'], stride=params['filter_stride'],
@@ -44,11 +46,13 @@ else:
 	train_data = pd.read_pickle(TRAIN_IMAGE_PATH)
 	val_data = pd.read_pickle(TEST_DATA_PATH)
 
+
 model = YNet(obs_len=OBS_LEN, pred_len=PRED_LEN, params=params)
-model.load(CHECKPOINT)
+# print(sum(p.numel() for p in model.model.style_hat.parameters() if p.requires_grad))
+if CHECKPOINT: model.load(CHECKPOINT)
 model.train_style_enc(train_data, val_data, params, train_image_path=TRAIN_IMAGE_PATH, val_image_path=TEST_IMAGE_PATH,
 				experiment_name=EXPERIMENT_NAME, batch_size=BATCH_SIZE, num_goals=NUM_GOALS, num_traj=NUM_TRAJ, 
-				device=None, dataset_name=DATASET_NAME)
+				device=None, dataset_name=DATASET_NAME, use_raw_data=params['use_raw_data'])
 
 toc = time.time()
 print(time.strftime("%Hh%Mm%Ss", time.gmtime(toc - tic)))

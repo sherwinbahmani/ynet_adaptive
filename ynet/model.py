@@ -35,21 +35,21 @@ class StyleHat (nn.Module):
         )
 
 	def forward(self, x):
-		print('Hat')
-		print(x.shape)
-		print(x.device)
+		# print('Hat')
+		# print(x.shape)
+		# print(x.device)
 		x = x.flatten(start_dim=1)
-		print(x.shape)
-		print(self.hat)
+		# print(x.shape)
+		# print(self.hat)
 		x = self.hat(x)
-		print(x.shape)
+		# print(x.shape)
 		return x
 
 	def classify(self, x):
-		print('Class')
-		print(x.shape)
+		# print('Class')
+		# print(x.shape)
 		x = self.classifier(x)
-		print(x.shape)
+		# print(x.shape)
 		return x
 
 
@@ -89,13 +89,13 @@ class StyleEncoder(nn.Module):
 		# 					))
 
 	def forward(self, x):
-		print('Encoder')
-		print(x.shape)
+		# print('Encoder')
+		# print(x.shape)
 		for stage in self.stages:
 			x = stage(x)
-			print(x.shape)
+			# print(x.shape)
 		x = x.mean(dim=3).mean(dim=2).unsqueeze(2)
-		print(x.shape)
+		# print(x.shape)
 		return x
 
 
@@ -667,19 +667,19 @@ class YNet:
 		best_test_accuracy = 0
 
 
-		print('Start training')
-		for e in tqdm(range(params['num_epochs']), desc='Epoch'):
+		print('Start training', flush=True)
+		for e in range(params['num_epochs']):
 			train_loss, train_accuracy = train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
 													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
 
-			print(f'Epoch {e}: \nTrain loss: {train_loss} \Train style accuracy: {train_accuracy}')
+			print(f'Epoch {e}: \tTrain style accuracy: {train_accuracy} \t(loss: {train_loss}) ')
 
-			test_loss, test_accuracy = evaluate_style(model, val_loaders, val_images, e, obs_len, pred_len,
+			_, test_accuracy = evaluate_style(model, val_loaders, val_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
 													 input_template, optimizer, criterion, dataset_name, self.homo_mat)
 
-			print(f'Epoch {e}: \nValid loss: {test_loss} \nValid style accuracy: {test_accuracy}')
+			print(f'Epoch {e}: \tValid style accuracy: {test_accuracy}')
 
 
 			if best_test_accuracy < test_accuracy:
