@@ -10,7 +10,10 @@ encoder_channels:  # list of kernels in encoder
   - 32
   - 64
   - 64
-  - 64
+
+additional_channel_style:
+  - 128
+  - 256
 
 decoder_channels:  # list of kernels in decoder
   - 64

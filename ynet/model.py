@@ -35,12 +35,22 @@ class StyleHat (nn.Module):
         )
 
 	def forward(self, x):
-		x = x.flatten()
-		return self.hat(x)
+		print('Hat')
+		print(x.shape)
+		print(x.device)
+		x = x.flatten(start_dim=1)
+		print(x.shape)
+		print(self.hat)
+		x = self.hat(x)
+		print(x.shape)
+		return x
 
 	def classify(self, x):
+		print('Class')
+		print(x.shape)
 		x = self.classifier(x)
-
+		print(x.shape)
+		return x
 
 
 class StyleEncoder(nn.Module):
@@ -67,7 +77,7 @@ class StyleEncoder(nn.Module):
 				nn.ReLU(inplace=True),
 				nn.Conv2d(channels[i+1], channels[i+1], kernel_size=(3, 3), stride=(1, 1), padding=(1, 1)),
 				nn.ReLU(inplace=True)))
-
+		
 		# TODO: dimension reduction
 
 		self.stages.append(nn.MaxPool2d(kernel_size=2, stride=2, padding=0, dilation=1, ceil_mode=False))
@@ -79,8 +89,13 @@ class StyleEncoder(nn.Module):
 		# 					))
 
 	def forward(self, x):
+		print('Encoder')
+		print(x.shape)
 		for stage in self.stages:
 			x = stage(x)
+			print(x.shape)
+		x = x.mean(dim=3).mean(dim=2).unsqueeze(2)
+		print(x.shape)
 		return x
 
 
@@ -210,7 +225,7 @@ class YNetDecoder(nn.Module):
 
 class YNetTorch(nn.Module):
 	def __init__(self, obs_len, pred_len, segmentation_model_fp, use_features_only=False, semantic_classes=6,
-				 encoder_channels=[], decoder_channels=[], waypoints=1):
+				 encoder_channels=[], style_channels=[], decoder_channels=[], waypoints=1):
 		"""
 		Complete Y-net Architecture including semantic segmentation backbone, heatmap embedding and ConvPredictor
 		:param obs_len: int, observed timesteps
@@ -240,8 +255,8 @@ class YNetTorch(nn.Module):
 
 		self.softargmax_ = SoftArgmax2D(normalized_coordinates=False)
 
-		self.style_enc = StyleEncoder(in_channels=semantic_classes + obs_len, channels=encoder_channels)
-		self.style_hat = StyleHat(200, 200, 200, 3) # TODO: find the sizes
+		self.style_enc = StyleEncoder(in_channels=semantic_classes + obs_len + pred_len, channels=encoder_channels +style_channels)
+		self.style_hat = StyleHat(256, 128, 32, 3) # TODO: find the sizes
 
 	def segmentation(self, image):
 		return self.semantic_segmentation(image)
@@ -327,6 +342,7 @@ class YNet:
 							   use_features_only=params['use_features_only'],
 							   semantic_classes=params['semantic_classes'],
 							   encoder_channels=params['encoder_channels'],
+							   style_channels=params['additional_channel_style'],
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
@@ -604,9 +620,6 @@ class YNet:
 
 		# val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
 		# val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
-
-		print(df_train)
-
 
 
 		from utils.dataloader import separate_data_label

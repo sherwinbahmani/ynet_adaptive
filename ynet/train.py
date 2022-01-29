@@ -132,15 +132,17 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 	model.train()
 	batch = 0
 
+	train_iters = [iter(tl) for tl in train_loaders]
+
 	while batch < len(train_loaders[0]):
 
 		batch += 1
 		loss = 0
-		scene_images, trajectories, scenes = []
+		scene_images, trajectories, scenes = [], [], []
 
-		for i, train_loader in enumerate(train_loaders):
+		for i, train_iter in enumerate(train_iters):
 
-			(trajectory, meta, scene) = next(train_loader)
+			(trajectory, meta, scene) = next(train_iter)
 			trajectories.append(trajectory)
 			scenes.append(scenes)
 
@@ -226,11 +228,15 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 					# Backprop
 					loss += goal_loss + traj_loss
 
+			# fix size issue
+			for i in range(len(low_dim_style_list)):
+				print(low_dim_style_list[i].shape, torch.tensor(duplicate_size(low_dim_style_list[i])))
+				low_dim_style_list[i] =torch.repeat_interleave(low_dim_style_list[i], torch.tensor(duplicate_size(low_dim_style_list[i])), dim=0)
 
 			# Contrastive loss
 			input_features = torch.stack(low_dim_style_list)
-			input_labels = torch.range(len(train_loaders)).unsqueeze().to(device)
-			loss += contrastive_loss(input_features, input_labels) * params['contrast_loss_scale']
+			input_labels = torch.arange(len(train_loaders)).unsqueeze(dim=2).to(device)
+			loss += contrastive_loss(input_features, input_labels)
 
 			# Classifier
 			classifier_features = torch.cat(classified_style_list)
@@ -251,3 +257,23 @@ def train_style_enc(model, train_loaders, train_images, e, obs_len, pred_len, ba
 			train_loss.append(loss.detach())
 
 	return torch.cat(train_loss).mean().item(), torch.cat(train_accuracy).mean().item()
+
+
+def duplicate_size(tensor):
+	length = tensor.shape[0]
+	if length == 1:
+		return [8]
+	elif length == 2:
+		return [4,4]
+	elif length == 3:
+		return [3,3,2]
+	elif length == 4:
+		return [2,2,2,2]
+	elif length == 5:
+		return [2,2,2,1,1]
+	elif length == 6:
+		return [2,2,1,1,1,1]
+	elif length == 7:
+		return [2,1,1,1,1,1,1]
+	elif length == 8:
+		return [1,1,1,1,1,1,1,1]
