@@ -33,7 +33,7 @@ kernlen: 31  # (image) size of Gaussian kernel used for ground-truth Gaussian he
 nsig: 4  # sigma of Gaussian kernel used for ground-truth Gaussian heatmap
 
 use_features_only: False  # If True the segmentation model only uses the
-unfreeze: 150  # Unfreeze semantic segmentation model weights after this # of epochs
+unfreeze: 10000 #150  # Unfreeze semantic segmentation model weights after this # of epochs
 
 # TTST
 use_TTST: False

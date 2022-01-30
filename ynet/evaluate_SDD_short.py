@@ -28,7 +28,7 @@ BATCH_SIZE = 8
 
 TEST_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
 ## Set up data
-DATASET_TYPE = "dataset_ped_biker" # Either dataset_ped_biker, dataset_ped, dataset_biker
+DATASET_TYPE = "dataset_ped" # Either dataset_ped_biker, dataset_ped, dataset_biker
 # Gap Range: ["0.25_0.75.pkl", "1.25_1.75.pkl", "2.25_2.75.pkl", "3.25_3.75.pkl"]
 DATA_PATH = FOLDERNAME + f'{DATASET_TYPE}/gap' # either dataset_ped_biker
 TEST_FILES = ["2.25_2.75.pkl"]

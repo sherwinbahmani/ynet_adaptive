@@ -3,6 +3,7 @@ import os
 import yaml
 from datetime import datetime
 from model import YNet
+from utils.preprocessing import split_df_ratio
 
 # FOLDERNAME = './'
 FOLDERNAME = "/fastdata/vilab07/sdd/" 
@@ -17,6 +18,7 @@ NUM_GOALS = 20  # K_e
 NUM_TRAJ = 1  # K_a
 BATCH_SIZE = 4
 EPOCHS_CHECKPOINTS = 5 # Save checkpoint after every N epochs on top of storing the best one
+VAL_RATIO = 0.3 # Take subset of training sets for validation sets (between 0.0 (none) and 1.0 (all))
 print(f"Experiment {EXPERIMENT_NAME} has started")
 
 with open(CONFIG_FILE_PATH) as file:
@@ -25,19 +27,23 @@ TRAIN_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
 VAL_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
 
 ## Set up data
-DATASET_TYPE = "dataset_ped_biker" # Either dataset_ped_biker, dataset_ped, dataset_biker
+DATASET_TYPE = "dataset_ped" # Either dataset_ped_biker, dataset_ped, dataset_biker
 # Gap Range: ["0.25_0.75.pkl", "1.25_1.75.pkl", "2.25_2.75.pkl", "3.25_3.75.pkl"]
 DATA_PATH = FOLDERNAME + f'{DATASET_TYPE}/gap' # either dataset_ped_biker
 TRAIN_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "3.25_3.75.pkl"]
-VAL_FILES = ["2.25_2.75.pkl"]
+VAL_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "3.25_3.75.pkl"]
 
 # No Gap Range: ["0.5_1.5.pkl", "1.5_2.5.pkl", "2.5_3.5.pkl", "3.5_4.5.pkl"]
 # DATA_PATH = FOLDERNAME + f'{DATASET_TYPE}/no_gap'
 # TRAIN_FILES = ["0.5_1.5.pkl", "1.5_2.5.pkl", "3.5_4.5.pkl"]
-# VAL_FILES = ["2.5_3.5.pkl"]
+# VAL_FILES = ["0.5_1.5.pkl", "1.5_2.5.pkl", "3.5_4.5.pkl"]
 
 df_train = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, train_file)) for train_file in TRAIN_FILES])
-df_val = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, val_file)) for val_file in VAL_FILES])
+if TRAIN_FILES == VAL_FILES:
+    print(f"Split training set based on given ratio {VAL_RATIO}")
+    df_train, df_val = split_df_ratio(df_train, VAL_RATIO)
+else:
+    df_val = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, val_file)) for val_file in VAL_FILES])
     
 params['segmentation_model_fp'] = FOLDERNAME + 'ynet_additional_files/segmentation_models/SDD_segmentation.pth'
 

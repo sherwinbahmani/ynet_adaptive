@@ -822,6 +822,16 @@ def plot_histogram(vel, label, out_dir):
 	plt.savefig(os.path.join(out_dir, label))
 	plt.close(fig)
 
+def split_df_ratio(df, ratio):
+	meta_ids = np.unique(df["metaId"])
+	test_meta_ids, train_meta_ids = np.split(meta_ids, [int(ratio * len(meta_ids))])
+	df_train = reduce_df_meta_ids(df, train_meta_ids)
+	df_test = reduce_df_meta_ids(df, test_meta_ids)
+	return df_train, df_test
+
+def reduce_df_meta_ids(df, meta_ids):
+	return df[(df["metaId"].values == meta_ids[:, None]).sum(axis=0).astype(bool)]
+
 if __name__ == "__main__":
 	# TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_train.pkl'
 	# VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_val.pkl'
