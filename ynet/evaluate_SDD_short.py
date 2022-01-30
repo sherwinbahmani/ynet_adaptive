@@ -14,7 +14,6 @@ CHECKPOINT = None #FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.p
 CONFIG_FILE_PATH = 'config/sdd_raw_eval.yaml'  # yaml config file containing all the hyperparameters
 EXPERIMENT_NAME = time_stamp  # arbitrary name for this experiment
 DATASET_NAME = 'sdd'
-SDD_RAW_PATH = FOLDERNAME + "sdd_raw"
 with open(CONFIG_FILE_PATH) as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
 print(f"Experiment {EXPERIMENT_NAME} has started")

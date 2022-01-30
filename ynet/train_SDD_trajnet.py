@@ -1,5 +1,4 @@
 import pandas as pd
-import pathlib
 import os
 import yaml
 from datetime import datetime
@@ -8,9 +7,7 @@ from model import YNet
 # FOLDERNAME = './'
 FOLDERNAME = "/fastdata/vilab07/sdd/" 
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-OUT_PATH_DATA = FOLDERNAME + "dataset_custom"# If None, the datasets will not be saved
 EXPERIMENT_NAME = time_stamp  # arbitrary name for this experiment
-SDD_RAW_PATH = FOLDERNAME + "sdd_raw"
 CHECKPOINT = None #FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
 CONFIG_FILE_PATH = 'config/sdd_raw_train.yaml'
 DATASET_NAME = 'sdd'
@@ -19,6 +16,7 @@ PRED_LEN = 12  # in timesteps
 NUM_GOALS = 20  # K_e
 NUM_TRAJ = 1  # K_a
 BATCH_SIZE = 4
+EPOCHS_CHECKPOINTS = 5 # Save checkpoint after every N epochs on top of storing the best one
 print(f"Experiment {EXPERIMENT_NAME} has started")
 
 with open(CONFIG_FILE_PATH) as file:
@@ -50,4 +48,5 @@ if CHECKPOINT is not None:
 
 model.train(df_train, df_val, params, train_image_path=TRAIN_IMAGE_PATH, val_image_path=VAL_IMAGE_PATH,
             experiment_name=EXPERIMENT_NAME, batch_size=BATCH_SIZE, num_goals=NUM_GOALS, num_traj=NUM_TRAJ, 
-            device=None, dataset_name=DATASET_NAME, use_raw_data=params['use_raw_data'])
+            device=None, dataset_name=DATASET_NAME, use_raw_data=params['use_raw_data'],
+            epochs_checkpoints=EPOCHS_CHECKPOINTS)

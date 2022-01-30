@@ -216,7 +216,7 @@ class YNet:
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
-	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False):
+	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False, epochs_checkpoints=None):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -344,6 +344,9 @@ class YNet:
 				print(f'Best Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
 				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
 				best_test_ADE = val_ADE
+			
+			if e % epochs_checkpoints == 0:
+				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + f'_weights_epoch_{e}.pt')
 
 	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_data=False):
 		"""
