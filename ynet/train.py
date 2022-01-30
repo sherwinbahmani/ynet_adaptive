@@ -23,8 +23,8 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 	# outer loop, for loop over each scene as scenes have different image size and to calculate segmentation only once
 	for batch, (trajectory, meta, scene) in enumerate(train_loader):
 		# Stop training after 25 batches to increase evaluation frequency
-		if dataset_name == 'sdd' and obs_len == 8 and batch > 25:
-			break
+		# if dataset_name == 'sdd' and obs_len == 8 and batch > 25:
+		# 	break
 
 		# TODO Delete
 		if dataset_name == 'eth':
