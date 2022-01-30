@@ -4,11 +4,13 @@ from model import YNet
 from datetime import datetime
 import time
 import os
+from utils.preprocessing import set_random_seeds
 
 tic = time.time()
 
-# FOLDERNAME = './'
-FOLDERNAME = "/fastdata/vilab07/sdd/"
+FOLDERNAME = './'
+seed = 1
+set_random_seeds(seed)
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
 CHECKPOINT = None #FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
 CONFIG_FILE_PATH = 'config/sdd_raw_eval.yaml'  # yaml config file containing all the hyperparameters

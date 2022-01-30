@@ -1,4 +1,6 @@
 import numpy as np
+import torch
+import random
 import pandas as pd
 import os
 import cv2
@@ -831,6 +833,11 @@ def split_df_ratio(df, ratio):
 
 def reduce_df_meta_ids(df, meta_ids):
 	return df[(df["metaId"].values == meta_ids[:, None]).sum(axis=0).astype(bool)]
+
+def set_random_seeds(random_seed=0):
+    torch.manual_seed(random_seed)
+    np.random.seed(random_seed)
+    random.seed(random_seed)
 
 if __name__ == "__main__":
 	# TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_train.pkl'
