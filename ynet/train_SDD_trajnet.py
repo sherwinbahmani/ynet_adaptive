@@ -14,8 +14,11 @@ args = get_parser()
 
 print(args)
 
-TRAIN_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "3.25_3.75.pkl"]
-VAL_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "3.25_3.75.pkl"]
+# TRAIN_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "3.25_3.75.pkl"]
+# VAL_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "3.25_3.75.pkl"]
+
+TRAIN_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "2.25_2.75.pkl"]
+VAL_FILES = ["0.25_0.75.pkl", "1.25_1.75.pkl", "2.25_2.75.pkl"]
 
 set_random_seeds(args.seed)
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
@@ -58,7 +61,7 @@ EXPERIMENT_NAME = ""
 EXPERIMENT_NAME += f"Seed_{args.seed}"
 EXPERIMENT_NAME += f"_Train_{'_'.join(['('+f.split('.pkl')[0]+')' for f in TRAIN_FILES])}"
 EXPERIMENT_NAME += f"_Val_{'_'.join(['('+f.split('.pkl')[0]+')' for f in VAL_FILES])}"
-EXPERIMENT_NAME += f"_args.val_ratio_{args.val_ratio}"
+EXPERIMENT_NAME += f"_Val_Ratio_{args.val_ratio}"
 EXPERIMENT_NAME += f"_{args.dataset}"
 EXPERIMENT_NAME += f"_{args.type}"
 print(f"Experiment {EXPERIMENT_NAME} has started")
