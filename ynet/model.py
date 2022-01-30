@@ -272,7 +272,7 @@ class YNet:
 
 		val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
 		val_loader = DataLoader(val_dataset, batch_size=1, collate_fn=scene_collate)
-		##### Create list of data loaders (instead of line 270 - 274)
+		##### Create list of data loaders (instead of line 270 - 274): CHECK UPDATED separate_data_label()
 		# from utils.dataloader import separate_data_label
 		# df_train_list = separate_data_label(df_train)
 		# train_datasets = [SceneDataset(df_train, resize=params['resize'], total_len=total_len)

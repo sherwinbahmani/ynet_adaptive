@@ -2,15 +2,15 @@ import pandas as pd
 import yaml
 from model import YNet
 from datetime import datetime
-from utils.preprocessing import load_raw_dataset
 import time
+import os
 
 tic = time.time()
 
 # FOLDERNAME = './'
 FOLDERNAME = "/fastdata/vilab07/sdd/"
 time_stamp = datetime.now().strftime('%Y_%m_%d_%H_%M_%S')
-CHECKPOINT = FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
+CHECKPOINT = None #FOLDERNAME + 'pretrained_models/2022_01_27_23_58_00_weights.pt' # None means no checkpoint will be used to fine-tune
 CONFIG_FILE_PATH = 'config/sdd_raw_eval.yaml'  # yaml config file containing all the hyperparameters
 EXPERIMENT_NAME = time_stamp  # arbitrary name for this experiment
 DATASET_NAME = 'sdd'
@@ -19,12 +19,6 @@ with open(CONFIG_FILE_PATH) as file:
     params = yaml.load(file, Loader=yaml.FullLoader)
 print(f"Experiment {EXPERIMENT_NAME} has started")
 
-if params['use_raw_data']:
-    TRAIN_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
-    TEST_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
-else:
-    TEST_DATA_PATH = FOLDERNAME + 'data/SDD/test_trajnet.pkl'
-    TEST_IMAGE_PATH = FOLDERNAME + 'data/SDD/test'  # only needed for YNet, PECNet ignores this value
 params['segmentation_model_fp'] = FOLDERNAME + 'ynet_additional_files/segmentation_models/SDD_segmentation.pth'
 OBS_LEN = 8  # in timesteps
 PRED_LEN = 12  # in timesteps
@@ -33,19 +27,25 @@ NUM_TRAJ = 1  # K_a
 ROUNDS = 1  # Y-net is stochastic. How often to evaluate the whole dataset
 BATCH_SIZE = 8
 
-if params['use_raw_data']:
-    _, df_test = load_raw_dataset(path=SDD_RAW_PATH, step=params['step'],
-                                  window_size=params['min_num_steps_seq'], stride=params['filter_stride'],
-                                  train_labels=params['train_labels'], test_labels=params['test_labels'],
-                                  test_per=params['test_per'], max_train_agents=params['max_train_agents'],
-                                  train_set_ratio=params['train_set_ratio'], test_on_train=params['test_on_train'],
-                                  num_train_agents=params['num_train_agents'], num_test_agents=params['num_test_agents'],
-                                  random_train_test=params['random_train_test_split'])
-else:
-    df_test = pd.read_pickle(TEST_DATA_PATH)
+TEST_IMAGE_PATH = FOLDERNAME + 'sdd_raw/annotations'
+## Set up data
+DATASET_TYPE = "dataset_ped_biker" # Either dataset_ped_biker, dataset_ped, dataset_biker
+# Gap Range: ["0.25_0.75.pkl", "1.25_1.75.pkl", "2.25_2.75.pkl", "3.25_3.75.pkl"]
+DATA_PATH = FOLDERNAME + f'{DATASET_TYPE}/gap' # either dataset_ped_biker
+TEST_FILES = ["2.25_2.75.pkl"]
+
+# No Gap Range: ["0.5_1.5.pkl", "1.5_2.5.pkl", "2.5_3.5.pkl", "3.5_4.5.pkl"]
+# DATA_PATH = FOLDERNAME + f'{DATASET_TYPE}/no_gap'
+# TEST_FILES = ["2.5_3.5.pkl"]
+
+df_test = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, test_file)) for test_file in TEST_FILES])
 
 model = YNet(obs_len=OBS_LEN, pred_len=PRED_LEN, params=params)
-model.load(CHECKPOINT)
+if CHECKPOINT is not None:
+    model.load(CHECKPOINT)
+    print(f"Loaded checkpoint {CHECKPOINT}")
+else:
+    raise ValueError("No checkpoint given!")
 model.evaluate(df_test, params, image_path=TEST_IMAGE_PATH,
                batch_size=BATCH_SIZE, rounds=ROUNDS, 
                num_goals=NUM_GOALS, num_traj=NUM_TRAJ, device=None, dataset_name=DATASET_NAME,

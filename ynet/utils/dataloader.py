@@ -48,6 +48,6 @@ def scene_collate(batch):
 	return torch.Tensor(trajectories).squeeze(0), meta, scene[0]
 
 def separate_data_label(df):
-	labels = np.sort(np.unique(df["label"]))
-	df_list = [df[df["label"] == label] for label in labels]
+	labels = np.sort(np.unique(df["vel_range"]))
+	df_list = [df[df["vel_range"] == label] for label in labels]
 	return df_list
