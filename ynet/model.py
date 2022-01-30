@@ -336,7 +336,8 @@ class YNet:
 										temperature=params['temperature'], use_TTST=False,
 										use_CWS=False, dataset_name=dataset_name,
 										homo_mat=self.homo_mat, mode='val')
-			print(f'Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
+
+			print(f'Epoch {e}: 	Train ADE: {train_ADE:.2f} FDE: {train_FDE:.2f} 		Valid ADE: {val_ADE:.2f} FDE: {val_FDE:.2f}')
 			self.val_ADE.append(val_ADE)
 			self.val_FDE.append(val_FDE)
 
