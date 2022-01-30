@@ -700,36 +700,112 @@ def compute_vel_labels(df):
 	vel_labels = {}
 	meta_ids = np.unique(df["metaId"].values)
 	for meta_id in meta_ids:
-		df_meta = df[df["metaId"] == meta_id]
-		x = df_meta["x"].values
-		y = df_meta["y"].values
-		unique_labels = np.unique(df_meta["label"].values)
-		assert len(unique_labels) == 1
-		label = unique_labels[0]
-		frame_steps = []
-		for frame_idx, frame in enumerate(df_meta["frame"].values):
-			if frame_idx != len(df_meta["frame"].values) - 1:
-				frame_steps.append(df_meta["frame"].values[frame_idx + 1] - frame)
-		unique_frame_step = np.unique(frame_steps)
-		assert len(unique_frame_step) == 1
-		frame_step = unique_frame_step[0]
-		vel = []
-		for i in range(len(x)):
-			if i != len(x) - 1:
-				vel_i = math.sqrt(((x[i+1] - x[i])/frame_step)**2 + ((y[i+1] - y[i])/frame_step)**2)
-				vel.append(vel_i)
+		vel_mean, label = compute_vel_meta_id(df, meta_id)
 		if label not in vel_labels:
 			vel_labels[label] = []
-		vel_labels[label] += vel
+		vel_labels[label] += [vel_mean]
 	return vel_labels
+
+def compute_vel_meta_id(df, meta_id):
+	df_meta = df[df["metaId"] == meta_id]
+	x = df_meta["x"].values
+	y = df_meta["y"].values
+	unique_labels = np.unique(df_meta["label"].values)
+	assert len(unique_labels) == 1
+	label = unique_labels[0]
+	frame_steps = []
+	for frame_idx, frame in enumerate(df_meta["frame"].values):
+		if frame_idx != len(df_meta["frame"].values) - 1:
+			frame_steps.append(df_meta["frame"].values[frame_idx + 1] - frame)
+	unique_frame_step = np.unique(frame_steps)
+	assert len(unique_frame_step) == 1
+	frame_step = unique_frame_step[0]
+	vel = []
+	for i in range(len(x)):
+		if i != len(x) - 1:
+			vel_i = math.sqrt(((x[i+1] - x[i])/frame_step)**2 + ((y[i+1] - y[i])/frame_step)**2)
+			vel.append(vel_i)
+	vel_mean = np.mean(vel)
+	return vel_mean, label
+
+def create_vel_dataset(df, vel_ranges, labels, out_dir):
+	pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
+	vel_meta_ids = {vel_range: {"metaId": [], "sceneId": [], "label": []} for vel_range in vel_ranges}
+	meta_ids = np.unique(df["metaId"].values)
+	for meta_id in meta_ids:
+		vel_mean, label = compute_vel_meta_id(df, meta_id)
+		if label not in labels:
+			continue
+		for vel_range in vel_meta_ids.keys():
+			vel_min, vel_max = vel_range
+			if vel_mean >= vel_min and vel_mean <= vel_max:
+				vel_meta_ids[vel_range]["metaId"].append(meta_id)
+				unique_scene_ids = np.unique(df[df["metaId"] == meta_id]["sceneId"].values)
+				assert len(unique_scene_ids) == 1
+				scene_id = unique_scene_ids[0]
+				vel_meta_ids[vel_range]["sceneId"].append(scene_id)
+				vel_meta_ids[vel_range]["label"].append(label)
+	
+	num_metas = min([len(vel_range_meta_ids["metaId"]) for vel_range_meta_ids in vel_meta_ids.values()])
+	for vel_range, vel_range_meta_ids in vel_meta_ids.items():
+		scene_ids, scene_counts = np.unique(vel_range_meta_ids["sceneId"], return_counts=True)
+		sorted_unique_scene_counts = np.unique(np.sort(scene_counts))
+		total_count = 0
+		prev_count = 0
+		mask = np.zeros_like(scene_counts).astype(bool)
+		for scene_count in sorted_unique_scene_counts:
+			total_count += (scene_counts >= scene_count).sum() * (scene_count - prev_count)
+			if total_count >= num_metas:
+				break
+			mask[scene_counts == scene_count] = True
+			prev_count = scene_count
+		total_counts = np.zeros_like(scene_counts)
+		total_counts[mask] = scene_counts[mask]
+		total_counts[mask==False] = prev_count
+		less = True
+		while less:
+			for i in np.where(mask==False)[0]:
+				total_counts[i] += min(1, num_metas - total_counts.sum())
+				if num_metas == total_counts.sum():
+					less = False
+					break
+		vel_range_meta_ids["sceneId"] = np.array(vel_range_meta_ids["sceneId"])
+		vel_range_meta_ids["metaId"] = np.array(vel_range_meta_ids["metaId"])
+		vel_range_meta_ids["label"] = np.array(vel_range_meta_ids["label"])
+		meta_id_mask = np.zeros_like(vel_range_meta_ids["metaId"]).astype(bool)
+		for scene_idx, scene_id in enumerate(scene_ids):
+			scene_count = total_counts[scene_idx]
+			scene_mask = vel_range_meta_ids["sceneId"] == scene_id
+			scene_labels = vel_range_meta_ids["label"][scene_mask]
+			unique_scene_labels, scene_labels_count = np.unique(scene_labels, return_counts=True)
+			scene_labels_chosen = []
+			while len(scene_labels_chosen) < scene_count:
+				for label_idx, (unique_scene_label, scene_label_count) in enumerate(zip(unique_scene_labels, scene_labels_count)):
+					if scene_label_count != 0:
+						scene_labels_chosen.append(unique_scene_label)
+						scene_labels_count[label_idx] -= 1
+						if len(scene_labels_chosen) == scene_count:
+							break
+			labels_chosen, labels_chosen_count = np.unique(scene_labels_chosen, return_counts=True)
+			for label, label_count in zip(labels_chosen, labels_chosen_count):
+				meta_id_idx = np.where(np.logical_and(vel_range_meta_ids["label"] == label, vel_range_meta_ids["sceneId"] == scene_id))[0][:label_count]
+				meta_id_mask[meta_id_idx] = True
+		df_vel = df[np.array([df["metaId"] == meta_id for meta_id in vel_range_meta_ids["metaId"][meta_id_mask]]).any(axis=0)]
+		vel_range_name = f"{vel_range[0]}_{vel_range[1]}"
+		df_vel["vel_range"] = np.array(vel_range_name).repeat(len(df_vel))
+		out_path = os.path.join(out_dir, f"{vel_range_name}.pkl")
+		df_vel.to_pickle(out_path)
 
 def create_vel_histograms(df, out_dir):
 	vel_labels = compute_vel_labels(df)
 	vel_all = []
 	# Visualize data
 	for label, vel_label in vel_labels.items():
+		if label not in ["Pedestrian", "Biker"]:
+			continue
 		plot_histogram(vel_label, label, out_dir)
 		vel_all += vel_label
+	plot_histogram(vel_all, "All", out_dir)
 
 def plot_histogram(vel, label, out_dir):
 	fig = plt.figure()
@@ -740,19 +816,33 @@ def plot_histogram(vel, label, out_dir):
 	num_zeros = np.round((np.array(vel) == 0).sum()/len(vel), 2)
 	vel_label = np.sort(vel)[int(len(vel)*0.00):int(len(vel)*0.99)]
 	vel_label = vel_label[vel_label != 0]
-	plt.hist(vel_label, bins=100)
+	plt.hist(vel_label, bins=4)
 	plt.title(f"{label}, Mean: {mean}, Std: {std}, Min: {min_val}, Max: {max_val}, Zeros: {num_zeros}")
 	pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
 	plt.savefig(os.path.join(out_dir, label))
 	plt.close(fig)
 
 if __name__ == "__main__":
-	FOLDERNAME = "/fastdata/vilab07/sdd/"
 	# TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_train.pkl'
 	# VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_val.pkl'
 	# TRAIN_DATA_PATH = FOLDERNAME + 'ynet_additional_files/data/SDD/train_trajnet.pkl'
 	# VAL_DATA_PATH = FOLDERNAME + 'dataset_custom/2022_01_29_19_41_47_val.pkl'
-	TRAIN_DATA_PATH = FOLDERNAME + 'dataset_custom/complete.pkl'
-	OUT_DIR = "./visu/vel/complete"
-	df_train = pd.read_pickle(TRAIN_DATA_PATH)
-	create_vel_histograms(df_train, OUT_DIR)
+
+	# Visualize dataset
+	FOLDERNAME = "/fastdata/vilab07/sdd/"
+	DATA_PATH = FOLDERNAME + 'dataset_biker/gap/2.25_2.75.pkl'
+	OUT_DIR = "./visu/vel/complete_test"
+	df = pd.read_pickle(DATA_PATH)
+	print("Length", len(df))
+	create_vel_histograms(df, OUT_DIR)
+
+	# Create dataset
+	# FOLDERNAME = "/fastdata/vilab07/sdd/"
+	# data_path = FOLDERNAME + 'dataset_custom/complete.pkl'
+	# out_dir = FOLDERNAME + 'dataset_biker/gap'
+	# vel_ranges = [(0.25, 0.75), (1.25, 1.75), (2.25, 2.75), (3.25, 3.75)]
+	# # vel_ranges = [(0.5, 1.5), (1.5, 2.5), (2.5, 3.5), (3.5, 4.5)]
+	# df = pd.read_pickle(data_path)
+	# # labels = ["Pedestrian", "Biker"]
+	# labels = ["Biker"]
+	# create_vel_dataset(df, vel_ranges, labels, out_dir)
