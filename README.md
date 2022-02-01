@@ -8,7 +8,7 @@ This is an addition to the [official implementation](https://github.com/vita-epf
 <a href="https://sites.google.com/view/yuejiangliu">Yuejiang Liu</a>,
 <a href="https://www.riccardocadei.com">Riccardo Cadei</a>,
 <a href="https://people.epfl.ch/jonas.schweizer/?lang=en">Jonas Schweizer</a>,
-<a href="https://www.sherwinbahmani.github.io">Sherwin Bahmani</a>,
+<a href="https://sherwinbahmani.github.io">Sherwin Bahmani</a>,
 <a href="https://people.epfl.ch/alexandre.alahi/?lang=en/">Alexandre Alahi</a>
 <br>
 École Polytechnique Fédérale de Lausanne (EPFL)
