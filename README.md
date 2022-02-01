@@ -76,7 +76,7 @@ Zero-shot Evaluation
 bash run_eval.sh
 ```
 
-Fine-tuning / Few-shot adaptation
+Fine-tuning / Few-shot Adaptation
 
 ```
 bash run_fine_tune.sh
