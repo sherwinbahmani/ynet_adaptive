@@ -36,6 +36,7 @@ If you find this code useful for your research, please cite our paper:
   year={2021}
 }
 ```
+### Original Code
 
 Based on the original [Y-net](https://arxiv.org/pdf/2012.01526.pdf) [repository](https://github.com/HarshayuGirase/Human-Path-Prediction/tree/master/ynet)
 
