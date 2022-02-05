@@ -13,7 +13,7 @@ This is an addition to the [official implementation](https://github.com/vita-epf
 <br>
 École Polytechnique Fédérale de Lausanne (EPFL)
 
-Links: **[`Arxiv 11/2021`](https://arxiv.org/abs/2111.14820) | [`Video (7 min)`](https://drive.google.com/file/d/1Uo0Y0eHq4vI7wOxya4mJlxbAe3U4kMx6/view) | [`Adaptive Y-net`](https://github.com/sherwinbahmani/ynet_adaptive)**
+Links: **[`Arxiv 11/2021`](https://arxiv.org/abs/2111.14820) | [`Video (7 min)`](https://drive.google.com/file/d/1Uo0Y0eHq4vI7wOxya4mJlxbAe3U4kMx6/view) | [`Spurious`](https://github.com/vita-epfl/causalmotion/tree/main/spurious) | [`Style`](https://github.com/vita-epfl/causalmotion/tree/main/style)**
 <br>
 *Under review. Abbreviated version at NeurIPS DistShift, 2021.*
 
@@ -81,3 +81,9 @@ Fine-tuning / Few-shot Adaptation
 ```
 bash run_fine_tune.sh
 ```
+
+### Basic Results
+
+Results of different methods for low-shot transfer across agent types and speed limits.
+
+<img src="docs/fewshot.png" height="180"/>
