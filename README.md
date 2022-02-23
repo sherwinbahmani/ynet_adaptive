@@ -23,7 +23,7 @@ TL;DR: incorporate causal invariance and structure into the design and training 
 * causal (modular) structure to approximate a sparse causal graph and facilitate efficient adaptation
 
 <p align="left">
-  <img src="overview.png" width="800">
+  <img src="docs/overview.png" width="800">
 </p>
 
 If you find this code useful for your research, please cite our paper:
@@ -51,10 +51,16 @@ pip install -r requirements.txt
 ```
 
 ### Dataset
+
 Get segmentation masks for SDD from original Y-net authors
 ```
 pip install gdown && gdown https://drive.google.com/uc?id=1u4hTk_BZGq1929IxMPLCrDzoG3wsZnsa
 cd -rf ynet_additional_files/* ./
+```
+
+Download preprocessed datasets
+```
+gdown https://drive.google.com/uc?id=1QcsjWIsjyxiLY1geqcQKHDCK5cK_5eUi
 ```
 
 Download dataset https://www.kaggle.com/aryashah2k/stanford-drone-dataset and unzip to a directory dataset_raw.
