@@ -58,13 +58,14 @@ pip install gdown && gdown https://drive.google.com/uc?id=1u4hTk_BZGq1929IxMPLCr
 cd -rf ynet_additional_files/* ./
 ```
 
-Download preprocessed datasets
+Download our preprocessed datasets
 ```
 gdown https://drive.google.com/uc?id=1QcsjWIsjyxiLY1geqcQKHDCK5cK_5eUi
 ```
 
-Download dataset https://www.kaggle.com/aryashah2k/stanford-drone-dataset and unzip to a directory dataset_raw.
-Then run the preprocessing of the dataset to create a filtered dataset dataset_filter
+As an alternative, one can also create new data split as follows:
+1. Download dataset https://www.kaggle.com/aryashah2k/stanford-drone-dataset and unzip to a directory dataset_raw.
+2. Create a filtered dataset dataset_filter
 ```
 python utils/dataset.py --data_raw {Path to dataset_raw directory} --data_filter {Path to output dataset_filter directory} --labels {Filter dataset based on agent types}
 ```
