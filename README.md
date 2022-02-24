@@ -1,5 +1,4 @@
-# Y-net adaptive (Causal Motion Forecasting)
-
+# Adaptive Y-Net from a Causal Representation Perspective
 
 This is an addition to the [official implementation](https://github.com/vita-epfl/causalmotion) for the paper
 
@@ -47,7 +46,6 @@ Environments
 ```
 pip install --upgrade pip
 pip install -r requirements.txt
-# pip3 install torch==1.9.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 ```
 
 ### Dataset
@@ -70,20 +68,23 @@ As an alternative, one can also create new data split as follows:
 python utils/dataset.py --data_raw {Path to dataset_raw directory} --data_filter {Path to output dataset_filter directory} --labels {Filter dataset based on agent types}
 ```
 
-### Setup
-Train Baseline
+### Scripts
+
+1. Train Baseline
 
 ```
 bash run_train.sh
 ```
 
-Zero-shot Evaluation
+&nbsp;&nbsp;&nbsp;&nbsp;Our pretrained models can be downloaded from [google drive](https://drive.google.com/drive/folders/1HzHP2_Mg2bAlDV3bQERoGQU3PvijKQmU).
+
+2. Zero-shot Evaluation
 
 ```
 bash run_eval.sh
 ```
 
-Fine-tuning / Few-shot Adaptation
+3. Low-shot Adaptation
 
 ```
 bash run_fine_tune.sh
