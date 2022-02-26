@@ -76,7 +76,7 @@ After unzipping the file the directory should have following structure:
 
 In addition to our custom datasets in /path/to/sdd_ynet/dataset_filter, you can create custom datasets:
 ```
-create_custom_dataset.sh
+bash create_custom_dataset.sh
 ```
 
 ### Scripts
