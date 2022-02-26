@@ -1,6 +1,6 @@
 seeds=(1)
 batch_size=4
-foldername=/path/to/sdd_ynet/ # See README.md how to setup this directory
+foldername=sdd_ynet/ # See README.md how to setup this directory
 out_csv_dir=csv # /path/to/csv where the output results are written to
 dataset=dataset_filter/gap # Position the dataset in /path/to/sdd_ynet/
 val_files=(3.25_3.75.pkl) # Position the dataset files in /path/to/sdd_ynet/{dataset}

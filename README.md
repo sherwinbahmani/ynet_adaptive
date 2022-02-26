@@ -53,6 +53,13 @@ Install dependencies
 pip install -r requirements.txt
 ```
 
+Build [ddf](https://github.com/theFoxofSky/ddfnet) dependency
+```
+cd ddf
+python setup.py install
+mv build/lib*/* .
+```
+
 ### Dataset
 
 Get the raw dataset, our filtered custom dataset and segmentation masks for SDD from the original Y-net authors
@@ -63,23 +70,18 @@ unzip sdd_ynet.zip
 
 After unzipping the file the directory should have following structure:
 ```
-/path/to/sdd_ynet/
-                  dataset_raw/annotations/{scene_name}/video{x}/{annotations.txt, reference.jpg}
-
-                  dataset_filter/
-                                dataset_biker/
-                                              gap/{0.25_0.75.pkl, 1.25_1.75.pkl, 2.25_2.75.pkl, 3.25_3.75.pkl}
-                                              no_gap/{0.5_1.5.pkl, 1.5_2.5.pkl, 2.5_3.5.pkl, 3.5_4.5.pkl}
-                                dataset_ped/
-                                            gap/{0.25_0.75.pkl, 1.25_1.75.pkl, 2.25_2.75.pkl, 3.25_3.75.pkl}
-                                            no_gap/{0.5_1.5.pkl, 1.5_2.5.pkl, 2.5_3.5.pkl, 3.5_4.5.pkl}
-                                dataset_ped_biker/
-                                                  gap/{0.25_0.75.pkl, 1.25_1.75.pkl, 2.25_2.75.pkl, 3.25_3.75.pkl}
-                                                  no_gap/{0.5_1.5.pkl, 1.5_2.5.pkl, 2.5_3.5.pkl, 3.5_4.5.pkl}
-                  ynet_additional_files/segmentation_models/SDD_segmentation.pth
+sdd_ynet
+├── dataset_raw
+├── dataset_filter
+│   ├── dataset_ped
+│   ├── dataset_biker
+│   │   ├── gap
+│   │   └── no_gap
+│   └── ...
+└── ynet_additional_files
 ```
 
-In addition to our custom datasets in /path/to/sdd_ynet/dataset_filter, you can create custom datasets:
+In addition to our custom datasets in sdd_ynet/dataset_filter, you can create custom datasets:
 ```
 bash create_custom_dataset.sh
 ```

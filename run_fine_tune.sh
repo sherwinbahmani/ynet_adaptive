@@ -1,7 +1,7 @@
 seeds=(1) # Fine-tune the model on different seeds
 batch_size=4
 num_epochs=50
-foldername=/path/to/sdd_ynet/ # See README.md how to setup this directory
+foldername=sdd_ynet/ # See README.md how to setup this directory
 out_csv_dir=csv # /path/to/csv where the output results are written to
 val_ratio=0.3 # Split train dataset into a train and val split in case the domains are the same
 dataset=dataset_filter/gap # Position the dataset in /path/to/sdd_ynet/
