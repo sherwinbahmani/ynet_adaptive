@@ -41,10 +41,15 @@ Based on the original [Y-net](https://arxiv.org/pdf/2012.01526.pdf) [repository]
 
 ### Setup
 
-Environments
+Install PyTorch, for example using pip
 
 ```
 pip install --upgrade pip
+pip install torch==1.9.0+cu111 torchvision==0.10.0+cu111 torchaudio==0.9.0 -f https://download.pytorch.org/whl/torch_stable.html
+```
+
+Install dependencies
+```
 pip install -r requirements.txt
 ```
 
