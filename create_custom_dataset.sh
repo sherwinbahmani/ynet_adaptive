@@ -1,4 +1,4 @@
-data_raw=/path/to/sdd_ynet/dataset_raw # See README.md on how to download the raw dataset
+data_raw=sdd_ynet/dataset_raw # See README.md on how to download the raw dataset
 step=12
 window_size=20
 stride=20
