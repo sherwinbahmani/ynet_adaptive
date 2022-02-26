@@ -437,10 +437,11 @@ def set_random_seeds(random_seed=0):
     np.random.seed(random_seed)
     random.seed(random_seed)
 
-def limit_samples(df, num):
+def limit_samples(df, num, batch_size):
 	if num is None:
 		return df
-	meta_ids = np.unique(df["metaId"])[:num]
+	num_total = num * batch_size
+	meta_ids = np.unique(df["metaId"])[:num_total]
 	df = reduce_df_meta_ids(df, meta_ids)
 	return df
 

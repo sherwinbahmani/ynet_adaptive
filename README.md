@@ -50,22 +50,33 @@ pip install -r requirements.txt
 
 ### Dataset
 
-Get segmentation masks for SDD from original Y-net authors
+Get the raw dataset, our filtered custom dataset and segmentation masks for SDD from the original Y-net authors
 ```
-pip install gdown && gdown https://drive.google.com/uc?id=1u4hTk_BZGq1929IxMPLCrDzoG3wsZnsa
-cd -rf ynet_additional_files/* ./
-```
-
-Download our preprocessed datasets
-```
-gdown https://drive.google.com/uc?id=1QcsjWIsjyxiLY1geqcQKHDCK5cK_5eUi
+pip install gdown && gdown https://drive.google.com/uc?id=14Jn8HsI-MjNIwepksgW4b5QoRcQe97Lg
+unzip sdd_ynet.zip
 ```
 
-As an alternative, one can also create new data split as follows:
-1. Download dataset https://www.kaggle.com/aryashah2k/stanford-drone-dataset and unzip to a directory dataset_raw.
-2. Create a filtered dataset dataset_filter
+After unzipping the file the directory should have following structure:
 ```
-python utils/dataset.py --data_raw {Path to dataset_raw directory} --data_filter {Path to output dataset_filter directory} --labels {Filter dataset based on agent types}
+/path/to/sdd_ynet/
+                  dataset_raw/annotations/{scene_name}/video{x}/{annotations.txt, reference.jpg}
+
+                  dataset_filter/
+                                dataset_biker/
+                                              gap/{0.25_0.75.pkl, 1.25_1.75.pkl, 2.25_2.75.pkl, 3.25_3.75.pkl}
+                                              no_gap/{0.5_1.5.pkl, 1.5_2.5.pkl, 2.5_3.5.pkl, 3.5_4.5.pkl}
+                                dataset_ped/
+                                            gap/{0.25_0.75.pkl, 1.25_1.75.pkl, 2.25_2.75.pkl, 3.25_3.75.pkl}
+                                            no_gap/{0.5_1.5.pkl, 1.5_2.5.pkl, 2.5_3.5.pkl, 3.5_4.5.pkl}
+                                dataset_ped_biker/
+                                                  gap/{0.25_0.75.pkl, 1.25_1.75.pkl, 2.25_2.75.pkl, 3.25_3.75.pkl}
+                                                  no_gap/{0.5_1.5.pkl, 1.5_2.5.pkl, 2.5_3.5.pkl, 3.5_4.5.pkl}
+                  ynet_additional_files/segmentation_models/SDD_segmentation.pth
+```
+
+In addition to our custom datasets in /path/to/sdd_ynet/dataset_filter, you can create custom datasets:
+```
+create_custom_dataset.sh
 ```
 
 ### Scripts

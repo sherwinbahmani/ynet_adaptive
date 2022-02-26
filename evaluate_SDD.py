@@ -25,8 +25,7 @@ params['segmentation_model_fp'] = os.path.join(args.foldername, 'ynet_additional
 
 TEST_IMAGE_PATH = os.path.join(args.foldername, 'sdd_raw', 'annotations')
 assert os.path.isdir(TEST_IMAGE_PATH), 'raw data dir error'
-dataset_name_short = os.path.join(args.dataset, args.type)
-DATA_PATH = args.foldername + dataset_name_short
+DATA_PATH = os.path.join(args.foldername, args.dataset)
 
 df_test = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, test_file)) for test_file in args.val_files])
 
@@ -49,5 +48,5 @@ toc = time.time()
 print(time.strftime("%Hh%Mm%Ss", time.gmtime(toc - tic)))
 
 if args.out_csv_dir is not None:
-    write_csv(args.out_csv_dir, args.seed, ade, fde, 0, 0, "eval", dataset_name_short,
+    write_csv(args.out_csv_dir, args.seed, ade, fde, 0, 0, "eval", args.dataset,
               args.val_files, None)

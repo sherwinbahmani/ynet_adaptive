@@ -40,8 +40,7 @@ assert os.path.isdir(TRAIN_IMAGE_PATH), 'raw data dir error'
 assert os.path.isdir(VAL_IMAGE_PATH), 'raw data dir error'
 
 ## Set up data
-dataset_name_short = os.path.join(args.dataset, args.type)
-DATA_PATH = os.path.join(args.foldername, dataset_name_short)
+DATA_PATH = os.path.join(args.foldername, args.dataset)
 df_train = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, train_file)) for train_file in args.train_files])
 if args.train_files == args.val_files:
     print(f"Split training set based on given ratio {args.val_ratio}")
@@ -49,7 +48,7 @@ if args.train_files == args.val_files:
 else:
     df_val = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, val_file)) for val_file in args.val_files])
 
-df_train = limit_samples(df_train, args.num_train_batches * args.batch_size)
+df_train = limit_samples(df_train, args.num_train_batches, args.batch_size)
     
 params['segmentation_model_fp'] = os.path.join(args.foldername, 'ynet_additional_files', 'segmentation_models', 'SDD_segmentation.pth')
 params['num_epochs'] = args.num_epochs
@@ -66,8 +65,7 @@ EXPERIMENT_NAME += f"Seed_{args.seed}"
 EXPERIMENT_NAME += f"_Train_{'_'.join(['('+f.split('.pkl')[0]+')' for f in args.train_files])}"
 EXPERIMENT_NAME += f"_Val_{'_'.join(['('+f.split('.pkl')[0]+')' for f in args.val_files])}"
 EXPERIMENT_NAME += f"_Val_Ratio_{args.val_ratio}"
-EXPERIMENT_NAME += f"_{args.dataset}"
-EXPERIMENT_NAME += f"_{args.type}"
+EXPERIMENT_NAME += f"_{(args.dataset).replace('/', '_')}"
 EXPERIMENT_NAME += f"_train_{args.train_net}"
 print(f"Experiment {EXPERIMENT_NAME} has started")
 
@@ -79,7 +77,7 @@ val_ade, val_fde, train_ade, train_fde = model.train(df_train, df_val, params, t
 
 if args.out_csv_dir is not None:
     num_train_batches = len(df_train)//((params['OBS_LEN'] + params['PRED_LEN']) * args.batch_size)
-    write_csv(args.out_csv_dir, args.seed, val_ade, val_fde, args.num_epochs, num_train_batches, args.train_net, dataset_name_short,
+    write_csv(args.out_csv_dir, args.seed, val_ade, val_fde, args.num_epochs, num_train_batches, args.train_net, args.dataset,
               args.val_files, args.train_files,train_ade, train_fde)
 
 if args.out_csv_dir is not None and args.fine_tune:
@@ -87,7 +85,7 @@ if args.out_csv_dir is not None and args.fine_tune:
             batch_size=args.batch_size, rounds=args.rounds, 
             num_goals=params['NUM_GOALS'], num_traj=params['NUM_TRAJ'], device=None, dataset_name=DATASET_NAME,
             use_raw_data=params['use_raw_data'], with_style=args.train_net == "modulator")
-    write_csv(args.out_csv_dir, args.seed, ade, fde, 0, num_train_batches, args.train_net, dataset_name_short,
+    write_csv(args.out_csv_dir, args.seed, ade, fde, 0, num_train_batches, args.train_net, args.dataset,
               args.val_files, None)
 
 

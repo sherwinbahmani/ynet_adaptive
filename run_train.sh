@@ -1,28 +1,16 @@
-seeds=(1)
+seeds=(1) # Train the model on different seeds
 batch_size=4
-foldername=/sdd/
-out_csv_dir=csv
-val_ratio=0.3
-datasets=(dataset_filter)
-gap_type=(gap) #(gap no_gap)
-val_files=(0.25_0.75.pkl 1.25_1.75.pkl 2.25_2.75.pkl)
-train_files=(0.25_0.75.pkl 1.25_1.75.pkl 2.25_2.75.pkl)
 num_epochs=50
-train_nets=(all) #(all encoder modulator)
+foldername=/path/to/sdd_ynet/ # See README.md how to setup this directory
+out_csv_dir=csv # /path/to/csv where the output results are written to
+val_ratio=0.3 # Split train dataset into a train and val split in case the domains are the same
+dataset=dataset_filter/gap # Position the dataset in /path/to/sdd_ynet/
+val_files=(0.25_0.75.pkl 1.25_1.75.pkl 2.25_2.75.pkl) # Position the dataset files in /path/to/sdd_ynet/{dataset}
+train_files=(0.25_0.75.pkl 1.25_1.75.pkl 2.25_2.75.pkl) # Position the dataset files in /path/to/sdd_ynet/{dataset}
+train_net=all # Train either all parameters, only the encoder or the modulator: (all encoder modulator)
+#ckpt=/path/to/ckpt_file # In case you want to resume training, add --ckpt $ckpt
 
 for seed in ${seeds[@]}
 do
-    for dataset in ${datasets[@]}
-    do
-        for data_type in ${gap_type[@]}
-        do
-            for train_net in ${train_nets[@]}
-            do
-                for num in ${num_train_batches[@]}
-                do
-                    python train_SDD.py --seed $seed --batch_size $batch_size --foldername $foldername --val_ratio $val_ratio --dataset $dataset --type $data_type --val_files $val_files --out_csv_dir $out_csv_dir --num_epochs $num_epochs --train_files $train_files --num_train_batches $num --train_net $train_net --ckpt $ckpt
-                done
-            done
-        done
-    done
+    python train_SDD.py --seed $seed --batch_size $batch_size --foldername $foldername --val_ratio $val_ratio --dataset $dataset --val_files $val_files --out_csv_dir $out_csv_dir --num_epochs $num_epochs --train_files $train_files --train_net $train_net
 done
