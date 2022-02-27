@@ -35,9 +35,6 @@ If you find this code useful for your research, please cite our paper:
   year={2021}
 }
 ```
-### Original Code
-
-Based on the original [Y-net](https://arxiv.org/pdf/2012.01526.pdf) [repository](https://github.com/HarshayuGirase/Human-Path-Prediction/tree/master/ynet)
 
 ### Setup
 
@@ -53,7 +50,7 @@ Install dependencies
 pip install -r requirements.txt
 ```
 
-Build [ddf](https://github.com/theFoxofSky/ddfnet) dependency
+Build [ddf dependency](https://github.com/theFoxofSky/ddfnet)
 ```
 cd ddf
 python setup.py install
@@ -113,3 +110,7 @@ bash run_fine_tune.sh
 Results of different methods for low-shot transfer across agent types and speed limits.
 
 <img src="docs/fewshot.png" height="180"/>
+
+### Acknowledgement
+
+Out code is developed upon the public code of [Y-net](https://github.com/HarshayuGirase/Human-Path-Prediction/tree/master/ynet) and [Decoupled Dynamic Filter](https://github.com/theFoxofSky/ddfnet).

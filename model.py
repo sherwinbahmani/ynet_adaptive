@@ -12,11 +12,14 @@ from utils.image_utils import create_gaussian_heatmap_template, create_dist_mat,
 from utils.dataloader import SceneDataset, scene_collate
 from test import evaluate
 from train import train
-from ddf import DDFPack
 
 
 class StyleModulator(nn.Module):
 	def __init__(self, sizes):
+		"""
+		Additional style modulator for efficient fine-tuning
+		"""		
+		from ddf import DDFPack
 		super(StyleModulator, self).__init__()
 		tau = 0.5
 		self.modulators = nn.ModuleList(
@@ -366,17 +369,17 @@ class YNet:
 											use_CWS=False, dataset_name=dataset_name,
 											homo_mat=self.homo_mat, mode='val', with_style=with_style)
 
-				print(f'Epoch {e}: 	Train ADE: {train_ADE:.2f} FDE: {train_FDE:.2f} 		Valid ADE: {val_ADE:.2f} FDE: {val_FDE:.2f}')
+				print(f'Epoch {e}: 	Train (Top-1) ADE: {train_ADE:.2f} FDE: {train_FDE:.2f} 		Valid (Top-k) ADE: {val_ADE:.2f} FDE: {val_FDE:.2f}')
 				self.val_ADE.append(val_ADE)
 				self.val_FDE.append(val_FDE)
 
 				if val_ADE < best_test_ADE:
 					print(f'Best Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
-					torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + '_weights.pt')
+					torch.save(model.state_dict(), 'ckpts/' + experiment_name + '_weights.pt')
 					best_test_ADE = val_ADE
 			
 			if e % epochs_checkpoints == 0:
-				torch.save(model.state_dict(), 'pretrained_models/' + experiment_name + f'_weights_epoch_{e}.pt')
+				torch.save(model.state_dict(), 'ckpts/' + experiment_name + f'_weights_epoch_{e}.pt')
 		if fine_tune:
 			val_ADE = np.mean(self.val_ADE)
 			val_FDE = np.mean(self.val_FDE)
@@ -472,4 +475,3 @@ class YNet:
 
 	def save(self, path):
 		torch.save(self.model.state_dict(), path)
-

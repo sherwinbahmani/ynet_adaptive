@@ -62,8 +62,8 @@ else:
 
 EXPERIMENT_NAME = ""
 EXPERIMENT_NAME += f"Seed_{args.seed}"
-EXPERIMENT_NAME += f"_Train_{'_'.join(['('+f.split('.pkl')[0]+')' for f in args.train_files])}"
-EXPERIMENT_NAME += f"_Val_{'_'.join(['('+f.split('.pkl')[0]+')' for f in args.val_files])}"
+EXPERIMENT_NAME += f"_Train_{'_'.join(['_'+f.split('.pkl')[0] for f in args.train_files])}_"
+EXPERIMENT_NAME += f"_Val_{'_'.join(['_'+f.split('.pkl')[0] for f in args.val_files])}_"
 EXPERIMENT_NAME += f"_Val_Ratio_{args.val_ratio}"
 EXPERIMENT_NAME += f"_{(args.dataset).replace('/', '_')}"
 EXPERIMENT_NAME += f"_train_{args.train_net}"
