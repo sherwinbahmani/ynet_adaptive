@@ -10,7 +10,7 @@ from utils.write_files import write_csv
 tic = time.time()
 args = val_parser()
 set_random_seeds(args.seed)
-CONFIG_FILE_PATH = os.path.join('config, sdd_raw_eval.yaml')  # yaml config file containing all the hyperparameters
+CONFIG_FILE_PATH = os.path.join('config', 'sdd_raw_eval.yaml')  # yaml config file containing all the hyperparameters
 DATASET_NAME = 'sdd'
 
 
@@ -23,7 +23,7 @@ if args.gpu != None:
 
 params['segmentation_model_fp'] = os.path.join(args.foldername, 'ynet_additional_files', 'segmentation_models', 'SDD_segmentation.pth')
 
-TEST_IMAGE_PATH = os.path.join(args.foldername, 'sdd_raw', 'annotations')
+TEST_IMAGE_PATH = os.path.join(args.foldername, 'dataset_raw', 'annotations')
 assert os.path.isdir(TEST_IMAGE_PATH), 'raw data dir error'
 DATA_PATH = os.path.join(args.foldername, args.dataset)
 
