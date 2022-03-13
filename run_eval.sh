@@ -1,5 +1,5 @@
 seeds=(1)
-batch_size=4
+batch_size=8
 foldername=sdd_ynet/ # See README.md how to setup this directory
 out_csv_dir=csv # /path/to/csv where the output results are written to
 dataset=dataset_filter/dataset_ped_biker/gap/ # Position the dataset in /path/to/sdd_ynet/

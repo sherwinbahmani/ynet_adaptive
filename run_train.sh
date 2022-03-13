@@ -1,5 +1,5 @@
 seeds=(1) # Train the model on different seeds
-batch_size=4
+batch_size=8
 num_epochs=50
 foldername=sdd_ynet/ # See README.md how to setup this directory
 out_csv_dir=csv # /path/to/csv where the output results are written to
