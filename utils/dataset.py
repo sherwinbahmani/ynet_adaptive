@@ -433,9 +433,12 @@ def reduce_df_meta_ids(df, meta_ids):
 	return df[(df["metaId"].values == meta_ids[:, None]).sum(axis=0).astype(bool)]
 
 def set_random_seeds(random_seed=0):
-    torch.manual_seed(random_seed)
-    np.random.seed(random_seed)
-    random.seed(random_seed)
+	torch.manual_seed(random_seed)
+	np.random.seed(random_seed)
+	random.seed(random_seed)
+	cv2.setRNGSeed(random_seed)
+	torch.backends.cudnn.deterministic = True
+	torch.backends.cudnn.benchmark = False
 
 def limit_samples(df, num, batch_size):
 	if num is None:
@@ -452,7 +455,7 @@ if __name__ == "__main__":
 	parser.add_argument("--window_size", default=20, type=int)
 	parser.add_argument("--stride", default=20, type=int)
 	parser.add_argument("--data_filter", default='datset_filter', type=str)
-	parser.add_argument("--labels", default=['Pedestrian', 'Piker'], help=['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater'], type=str)
+	parser.add_argument("--labels", default=['Pedestrian', 'Biker'], help=['Biker', 'Bus', 'Car', 'Cart', 'Pedestrian', 'Skater'], type=str)
 	args = parser.parse_args()
 	# Create dataset
 	df = load_raw_dataset(args.data_raw, args.step, args.window_size, args.stride)
