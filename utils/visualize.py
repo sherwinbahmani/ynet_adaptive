@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib
+matplotlib.use('Agg')
 import pandas as pd
 import seaborn as sns
 import os

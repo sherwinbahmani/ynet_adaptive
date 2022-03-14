@@ -1,6 +1,6 @@
 seeds=(1 2 3) # Fine-tune the model on different seeds
 batch_size=8
-num_epochs=50
+num_epochs=10
 foldername=sdd_ynet/ # See README.md how to setup this directory
 out_csv_dir=csv # /path/to/csv where the output results are written to
 val_ratio=0.3 # Split train dataset into a train and val split in case the domains are the same
@@ -9,7 +9,8 @@ val_files='3.25_3.75.pkl' # Position the dataset files in /path/to/sdd_ynet/{dat
 train_files='3.25_3.75.pkl' # Position the dataset files in /path/to/sdd_ynet/{dataset}
 num_train_batches=(1 2 3 4 5 6) # Fine-tune the model with a given number of batches
 train_net=all # Train either all parameters, only the encoder or the modulator: (all encoder modulator)
-ckpt=/path/to/checkpoint.pt # For example: /path/to/Seed_1_Train__0.25_0.75__1.25_1.75__2.25_2.75__Val__0.25_0.75__1.25_1.75__2.25_2.75__Val_Ratio_0.3_dataset_ped_biker_gap_weights.pt
+ckpt=ckpts/Seed_1_Train__0.25_0.75__1.25_1.75__2.25_2.75__Val__0.25_0.75__1.25_1.75__2.25_2.75__Val_Ratio_0.3_dataset_ped_biker_gap_weights.pt # Pre-trained model
+
 for seed in ${seeds[@]}
 do
     for num in ${num_train_batches[@]}

@@ -376,6 +376,11 @@ class YNet:
 			if e % epochs_checkpoints == 0 and not fine_tune:
 				torch.save(model.state_dict(), 'ckpts/' + experiment_name + f'_weights_epoch_{e}.pt')
 
+			# early stop in case of clear overfitting
+			if best_test_ADE < min(self.val_ADE[-5:]) * 0.9:
+				print(f'Early stop at epoch {e}')
+				break
+
 		# Load best model
 		model.load_state_dict(best_state_dict, strict=True)
 		return self.val_ADE, self.val_FDE
