@@ -4,6 +4,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 import numpy as np
+from copy import deepcopy
 
 from utils.softargmax import SoftArgmax2D, create_meshgrid
 from utils.dataset import augment_data, create_images_dict
@@ -367,14 +368,16 @@ class YNet:
 			self.val_FDE.append(val_FDE)
 
 			if val_ADE < best_test_ADE:
-				torch.save(model.state_dict(), 'ckpts/' + experiment_name + '_weights.pt')
 				best_test_ADE = val_ADE
+				best_state_dict = deepcopy(model.state_dict())
+				if not fine_tune:
+					torch.save(best_state_dict, 'ckpts/' + experiment_name + '_weights.pt')
 			
-			if e % epochs_checkpoints == 0:
+			if e % epochs_checkpoints == 0 and not fine_tune:
 				torch.save(model.state_dict(), 'ckpts/' + experiment_name + f'_weights_epoch_{e}.pt')
 
 		# Load best model
-		model.load_state_dict(torch.load('ckpts/' + experiment_name + '_weights.pt'), strict=True)
+		model.load_state_dict(best_state_dict, strict=True)
 		return self.val_ADE, self.val_FDE
 
 	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_data=False, with_style=False):
