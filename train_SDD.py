@@ -70,24 +70,21 @@ EXPERIMENT_NAME += f"_train_{args.train_net}"
 print(f"Experiment {EXPERIMENT_NAME} has started")
 
 
-val_ade, val_fde, train_ade, train_fde = model.train(df_train, df_val, params, train_image_path=TRAIN_IMAGE_PATH, val_image_path=VAL_IMAGE_PATH,
+val_ade, val_fde = model.train(df_train, df_val, params, train_image_path=TRAIN_IMAGE_PATH, val_image_path=VAL_IMAGE_PATH,
             experiment_name=EXPERIMENT_NAME, batch_size=args.batch_size, num_goals=params['NUM_GOALS'], num_traj=params['NUM_TRAJ'], 
             device=None, dataset_name=DATASET_NAME, use_raw_data=params['use_raw_data'],
-            epochs_checkpoints=args.save_every, train_net=args.train_net, fine_tune=args.fine_tune, val_steps=args.val_steps)
+            epochs_checkpoints=args.save_every, train_net=args.train_net, fine_tune=args.fine_tune)
+
+if args.out_csv_dir is not None and args.fine_tune:
+    ade_final, fde_final = model.evaluate(df_val, params, image_path=VAL_IMAGE_PATH,
+            batch_size=args.batch_size, rounds=args.rounds, 
+            num_goals=params['NUM_GOALS'], num_traj=params['NUM_TRAJ'], device=None, dataset_name=DATASET_NAME,
+            use_raw_data=params['use_raw_data'], with_style=args.train_net == "modulator")
 
 if args.out_csv_dir is not None:
     num_train_batches = len(df_train)//((params['OBS_LEN'] + params['PRED_LEN']) * args.batch_size)
     write_csv(args.out_csv_dir, args.seed, val_ade, val_fde, args.num_epochs, num_train_batches, args.train_net, args.dataset,
-              args.val_files, args.train_files,train_ade, train_fde)
-
-if args.out_csv_dir is not None and args.fine_tune:
-    ade, fde = model.evaluate(df_val, params, image_path=VAL_IMAGE_PATH,
-            batch_size=args.batch_size, rounds=args.rounds, 
-            num_goals=params['NUM_GOALS'], num_traj=params['NUM_TRAJ'], device=None, dataset_name=DATASET_NAME,
-            use_raw_data=params['use_raw_data'], with_style=args.train_net == "modulator")
-    write_csv(args.out_csv_dir, args.seed, ade, fde, 0, num_train_batches, args.train_net, args.dataset,
-              args.val_files, None)
-
+              args.val_files, args.train_files, ade_final, fde_final)
 
 toc = time.time()
 print(time.strftime("%Hh%Mm%Ss", time.gmtime(toc - tic)))

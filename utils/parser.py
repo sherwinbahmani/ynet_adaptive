@@ -25,7 +25,6 @@ def train_parser():
     parser.add_argument("--train_files", default=["0.25_0.75.pkl", "1.25_1.75.pkl", "2.25_2.75.pkl"], type=str, nargs="+")
     parser.add_argument("--num_train_batches", default=None, type=int, help="Limited number of batches for each training agent (fine-tuning), None means no limit (training)")
     parser.add_argument("--fine_tune", action="store_true")
-    parser.add_argument("--val_steps", default=None, type=int, nargs="+", help="Evaluate during training every n epochs, for None every epoch")
     parser.add_argument("--learning_rate", default=0.0001, type=float)
     return parser.parse_args()
 

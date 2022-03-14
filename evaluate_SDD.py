@@ -3,7 +3,7 @@ import yaml
 from model import YNet
 import time
 import os
-from utils.dataset import set_random_seeds
+from utils.dataset import set_random_seeds, split_df_ratio
 from utils.parser import val_parser
 from utils.write_files import write_csv
 
@@ -28,6 +28,7 @@ assert os.path.isdir(TEST_IMAGE_PATH), 'raw data dir error'
 DATA_PATH = os.path.join(args.foldername, args.dataset)
 
 df_test = pd.concat([pd.read_pickle(os.path.join(DATA_PATH, test_file)) for test_file in args.val_files])
+_, df_test = split_df_ratio(df_test, args.val_ratio)
 
 model = YNet(obs_len=params['OBS_LEN'], pred_len=params['PRED_LEN'], params=params)
 if args.ckpt is not None:
@@ -48,5 +49,4 @@ toc = time.time()
 print(time.strftime("%Hh%Mm%Ss", time.gmtime(toc - tic)))
 
 if args.out_csv_dir is not None:
-    write_csv(args.out_csv_dir, args.seed, ade, fde, 0, 0, "eval", args.dataset,
-              args.val_files, None)
+    write_csv(args.out_csv_dir, args.seed, [ade], [fde], 0, 0, "eval", args.dataset, args.val_files)

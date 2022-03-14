@@ -244,7 +244,7 @@ class YNet:
 							   decoder_channels=params['decoder_channels'],
 							   waypoints=len(params['waypoints']))
 
-	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False, epochs_checkpoints=None, train_net="all", fine_tune=False, val_steps=None):
+	def train(self, train_data, val_data, params, train_image_path, val_image_path, experiment_name, batch_size=8, num_goals=20, num_traj=1, device=None, dataset_name=None, use_raw_data=False, epochs_checkpoints=None, train_net="all", fine_tune=False):
 		"""
 		Train function
 		:param train_data: pd.df, train data
@@ -343,47 +343,39 @@ class YNet:
 
 		best_test_ADE = 99999999999999
 
-		self.train_ADE = []
-		self.train_FDE = []
 		self.val_ADE = []
 		self.val_FDE = []
 
 		with_style = train_net == "modulator"
-		val_ADE, val_FDE, train_ADE, train_FDE = None, None, None, None
 		print('Start training')
-		val_steps = [*range(params['num_epochs'])] if val_steps is None else val_steps
 		for e in tqdm(range(params['num_epochs']), desc='Epoch'):
 			train_ADE, train_FDE, train_loss = train(model, train_loader, train_images, e, obs_len, pred_len,
 													 batch_size, params, gt_template, device,
 													 input_template, optimizer, criterion, dataset_name, self.homo_mat, with_style=with_style)
-			self.train_ADE.append(train_ADE)
-			self.train_FDE.append(train_FDE)
 
-			if not fine_tune or (fine_tune and e in val_steps):
-				# For faster inference, we don't use TTST and CWS here, only for the test set evaluation
-				val_ADE, val_FDE = evaluate(model, val_loader, val_images, num_goals, num_traj,
-											obs_len=obs_len, batch_size=batch_size,
-											device=device, input_template=input_template,
-											waypoints=params['waypoints'], resize=params['resize'],
-											temperature=params['temperature'], use_TTST=False,
-											use_CWS=False, dataset_name=dataset_name,
-											homo_mat=self.homo_mat, mode='val', with_style=with_style)
+			# For faster inference, we don't use TTST and CWS here, only for the test set evaluation
+			val_ADE, val_FDE = evaluate(model, val_loader, val_images, num_goals, num_traj,
+										obs_len=obs_len, batch_size=batch_size,
+										device=device, input_template=input_template,
+										waypoints=params['waypoints'], resize=params['resize'],
+										temperature=params['temperature'], use_TTST=False,
+										use_CWS=False, dataset_name=dataset_name,
+										homo_mat=self.homo_mat, mode='val', with_style=with_style)
 
-				print(f'Epoch {e}: 	Train (Top-1) ADE: {train_ADE:.2f} FDE: {train_FDE:.2f} 		Valid (Top-k) ADE: {val_ADE:.2f} FDE: {val_FDE:.2f}')
-				self.val_ADE.append(val_ADE)
-				self.val_FDE.append(val_FDE)
+			print(f'Epoch {e}: 	Train (Top-1) ADE: {train_ADE:.2f} FDE: {train_FDE:.2f} 		Valid (Top-k) ADE: {val_ADE:.2f} FDE: {val_FDE:.2f}')
+			self.val_ADE.append(val_ADE)
+			self.val_FDE.append(val_FDE)
 
-				if val_ADE < best_test_ADE:
-					print(f'Best Epoch {e}: \nVal ADE: {val_ADE} \nVal FDE: {val_FDE}')
-					torch.save(model.state_dict(), 'ckpts/' + experiment_name + '_weights.pt')
-					best_test_ADE = val_ADE
+			if val_ADE < best_test_ADE:
+				torch.save(model.state_dict(), 'ckpts/' + experiment_name + '_weights.pt')
+				best_test_ADE = val_ADE
 			
 			if e % epochs_checkpoints == 0:
 				torch.save(model.state_dict(), 'ckpts/' + experiment_name + f'_weights_epoch_{e}.pt')
-		if fine_tune:
-			val_ADE = np.mean(self.val_ADE)
-			val_FDE = np.mean(self.val_FDE)
-		return val_ADE, val_FDE, train_ADE, train_FDE
+
+		# Load best model
+		model.load_state_dict(torch.load('ckpts/' + experiment_name + '_weights.pt'), strict=True)
+		return self.val_ADE, self.val_FDE
 
 	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_data=False, with_style=False):
 		"""
@@ -456,7 +448,7 @@ class YNet:
 										  device=device, input_template=input_template,
 										  waypoints=params['waypoints'], resize=params['resize'],
 										  temperature=params['temperature'], use_TTST=params['use_TTST'],
-										  use_CWS=True if len(params['waypoints']) > 1 else False,
+										  use_CWS=params['use_CWS'],
 										  rel_thresh=params['rel_threshold'], CWS_params=params['CWS_params'],
 										  dataset_name=dataset_name, homo_mat=self.homo_mat, mode='test', with_style=with_style)
 			print(f'Round {e}: \nTest ADE: {test_ADE} \nTest FDE: {test_FDE}')

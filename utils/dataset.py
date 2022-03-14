@@ -440,11 +440,14 @@ def set_random_seeds(random_seed=0):
 	torch.backends.cudnn.deterministic = True
 	torch.backends.cudnn.benchmark = False
 
-def limit_samples(df, num, batch_size):
+def limit_samples(df, num, batch_size, random_ids=True):
 	if num is None:
 		return df
 	num_total = num * batch_size
-	meta_ids = np.unique(df["metaId"])[:num_total]
+	meta_ids = np.unique(df["metaId"])
+	if random_ids:
+		np.random.shuffle(meta_ids)
+	meta_ids = meta_ids[:num_total]
 	df = reduce_df_meta_ids(df, meta_ids)
 	return df
 

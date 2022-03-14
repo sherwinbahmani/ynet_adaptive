@@ -2,9 +2,10 @@ from typing import List
 import pathlib
 import os
 import csv
+import numpy as np
 
 def write_csv(out_dir: str, seed: int, ade: float, fde: float, num_epochs: int, num_batches: int, train_net: str, dataset: str,
-              val_files: List[str], train_files: List[str] = None, train_ade: float = None, train_fde: float = None):
+              val_files: List[str], train_files: List[str] = None, ade_final: float = None, fde_final: float = None):
     val_name = f"{'_'.join(['_'+f.split('.pkl')[0]+'_' for f in val_files])}"
     if train_files is not None:
         train_name = f"{'_'.join(['_'+f.split('.pkl')[0]+'_' for f in train_files])}"
@@ -14,16 +15,13 @@ def write_csv(out_dir: str, seed: int, ade: float, fde: float, num_epochs: int, 
     out_dir = os.path.join(out_dir, dataset, train_name.strip("_"), val_name.strip("_"), train_net, str(seed))
     out_path = os.path.join(out_dir, out_name)
     pathlib.Path(out_dir).mkdir(parents=True, exist_ok=True)
-    out_data = [round_val(ade), round_val(fde), num_epochs, num_batches, train_net, dataset, val_name, train_name]
-    if train_ade is not None:
-        out_data.append(round_val(train_ade))
-    if train_fde is not None:
-        out_data.append(round_val(train_fde))
+    out_data = [round_val(min(ade)), round_val(np.mean(ade))] + [round_val(ade_val) for ade_val in ade]
+    if ade_final is not None:
+        out_data = [round_val(ade_final)] + out_data
     out_data = convert_to_str(out_data)
     with open(out_path, 'w') as f:
         wr = csv.writer(f, dialect='excel')
         wr.writerows(out_data)
-    pass
 
 def round_val(num: float, ndig: int = 4):
     if num is None:

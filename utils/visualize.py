@@ -25,6 +25,17 @@ def create_few_shot_plot(results_dir, out_dir, fontsize=16):
                 if num not in ades[update_mode]:
                     ades[update_mode][num] = []
                 ades[update_mode][num].append(ade)
+            zero_shot_path = results_dir.split("/")
+            zero_shot_path[-2] = "None"
+            zero_shot_path += ['eval', seed, '0.csv']
+            zero_shot_path = '/'.join(zero_shot_path)
+            if os.path.isfile(zero_shot_path):
+                ade = float(pd.read_csv(zero_shot_path).values[0][0]) #float(pd.read_csv(num_path).columns[0]) 
+                num = 0
+                if num not in ades[update_mode]:
+                    ades[update_mode][num] = []
+                ades[update_mode][num].append(ade)
+
     f, ax = plt.subplots(figsize=(4.96, 2.77))
     for train_name, train_vals in ades.items():
         v = [i for j in list(train_vals.values()) for i in j]
@@ -39,11 +50,11 @@ def create_few_shot_plot(results_dir, out_dir, fontsize=16):
     plt.yticks(fontsize=fontsize)
     plt.legend(fontsize=fontsize)
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-    plt.savefig(f'{out_dir}/result.pdf', bbox_inches='tight', pad_inches=0)
+    plt.savefig(f'{out_dir}/result.png', bbox_inches='tight', pad_inches=0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--results_dir", default='csv/final/dataset_ped_biker/gap/3.25_3.75/3.25_3.75', type=str)
+    parser.add_argument("--results_dir", default='csv/dataset_filter/dataset_ped_biker/gap/3.25_3.75/3.25_3.75', type=str)
     parser.add_argument("--out_dir", default='plots', type=str)
     args = parser.parse_args()
     create_few_shot_plot(args.results_dir, args.out_dir)
