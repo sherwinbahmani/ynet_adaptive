@@ -121,7 +121,7 @@ python utils/visualize.py
 
 Results of different methods for low-shot transfer across agent types and speed limits.
 
-<img src="docs/fewshot.png" height="180"/>
+<img src="docs/result.png" height="180"/>
 
 ### Acknowledgement
 

@@ -37,7 +37,7 @@ def create_few_shot_plot(results_dir, out_dir, fontsize=16):
                     ades[update_mode][num] = []
                 ades[update_mode][num].append(ade)
 
-    f, ax = plt.subplots(figsize=(4.96, 2.77))
+    f, ax = plt.subplots(figsize=(6, 4))
     for train_name, train_vals in ades.items():
         v = [i for j in list(train_vals.values()) for i in j]
         k =[j for j in list(train_vals.keys()) for _ in range(len(list(train_vals.values())[0]))]
@@ -51,7 +51,7 @@ def create_few_shot_plot(results_dir, out_dir, fontsize=16):
     plt.yticks(fontsize=fontsize)
     plt.legend(fontsize=fontsize)
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-    plt.savefig(f'{out_dir}/fewshot.png', bbox_inches='tight', pad_inches=0)
+    plt.savefig(f'{out_dir}/result.png', bbox_inches='tight', pad_inches=0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
