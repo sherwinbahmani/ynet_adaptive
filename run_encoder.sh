@@ -6,7 +6,7 @@ out_csv_dir=csv # /path/to/csv where the output results are written to
 val_ratio=0.5 # Split train dataset into a train and val split in case the domains are the same
 dataset=dataset_filter/dataset_ped_biker/gap/ # Position the dataset in /path/to/sdd_ynet/
 
-train_net=all # Train either all parameters, only the encoder or the modulator: (all encoder modulator)
+train_net=encoder # Train either all or part of the parameters
 
 list_batch_size=(1)
 list_num_batches=(1 2 3 4 5) # Fine-tune the model with a given number of batches

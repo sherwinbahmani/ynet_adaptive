@@ -92,25 +92,25 @@ bash run_train.sh
 ```
 
 &nbsp;&nbsp;&nbsp;&nbsp;Our pretrained models can be downloaded from [google drive](https://drive.google.com/drive/folders/1HzHP2_Mg2bAlDV3bQERoGQU3PvijKQmU).
-
 ```
-cd ckpts && gdown https://drive.google.com/uc?id=180sMpRiGhZOyCaGMMakZPXsTS7Affhuf
+cd ckpts
+gdown https://drive.google.com/uc?id=180sMpRiGhZOyCaGMMakZPXsTS7Affhuf
 ```
 
-2. Zero-shot Evaluation
+<!-- 2. Zero-shot Evaluation
 
 ```
 bash run_eval.sh
-```
+``` -->
 
-3. Low-shot Adaptation
+2. Low-shot Adaptation
 
 ```
 bash run_vanilla.sh
 ```
 
 ```
-bash run_modular.sh
+bash run_encoder.sh
 ```
 
 ```

@@ -7,7 +7,7 @@ import os
 import pathlib
 import argparse
 
-labels = {"all": "Vanilla fine-tuning", "modulator": "Modular adaptation"}
+labels = {"all": "vanilla fine-tuning", "encoder": "encoder adaptation", "modulator": "modulator adaptation"}
 
 def create_few_shot_plot(results_dir, out_dir, fontsize=16):
     update_modes = sorted(os.listdir(results_dir))
@@ -51,7 +51,7 @@ def create_few_shot_plot(results_dir, out_dir, fontsize=16):
     plt.yticks(fontsize=fontsize)
     plt.legend(fontsize=fontsize)
     ax.xaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
-    plt.savefig(f'{out_dir}/result.pdf', bbox_inches='tight', pad_inches=0)
+    plt.savefig(f'{out_dir}/fewshot.png', bbox_inches='tight', pad_inches=0)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

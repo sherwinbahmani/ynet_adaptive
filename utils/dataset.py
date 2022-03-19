@@ -440,7 +440,7 @@ def set_random_seeds(random_seed=0):
 	torch.backends.cudnn.deterministic = True
 	torch.backends.cudnn.benchmark = False
 
-def limit_samples(df, num, batch_size, random_ids=True):
+def limit_samples(df, num, batch_size, random_ids=False):
 	if num is None:
 		return df
 	num_total = num * batch_size

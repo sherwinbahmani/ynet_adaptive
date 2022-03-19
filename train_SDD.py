@@ -33,8 +33,8 @@ VAL_IMAGE_PATH = os.path.join(args.foldername, 'dataset_raw', 'annotations')
 
 # set the learning rate depending on the model
 params['learning_rate'] = args.learning_rate
-if args.train_net == 'modulator':
-    params['learning_rate'] *= 0.015
+# if args.train_net == 'modulator':
+#     params['learning_rate'] = 0.01
 
 assert os.path.isdir(TRAIN_IMAGE_PATH), 'raw data dir error'
 assert os.path.isdir(VAL_IMAGE_PATH), 'raw data dir error'
@@ -54,6 +54,10 @@ params['segmentation_model_fp'] = os.path.join(args.foldername, 'ynet_additional
 params['num_epochs'] = args.num_epochs
 
 model = YNet(obs_len=params['OBS_LEN'], pred_len=params['PRED_LEN'], params=params)
+
+if args.train_net == "modulator":
+    model.model.initialize_style()
+
 if args.ckpt is not None:
     model.load(args.ckpt)
     print(f"Loaded checkpoint {args.ckpt}")
@@ -81,7 +85,6 @@ if args.out_csv_dir is not None and args.fine_tune:
             num_goals=params['NUM_GOALS'], num_traj=params['NUM_TRAJ'], device=None, dataset_name=DATASET_NAME,
             use_raw_data=params['use_raw_data'], with_style=args.train_net == "modulator")
 
-if args.out_csv_dir is not None:
     num_train_batches = len(df_train)//((params['OBS_LEN'] + params['PRED_LEN']) * args.batch_size)
     write_csv(args.out_csv_dir, args.seed, val_ade, val_fde, args.num_epochs, num_train_batches, args.train_net, args.dataset,
               args.val_files, args.train_files, ade_final, fde_final)

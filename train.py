@@ -20,6 +20,7 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 	train_FDE = []
 	model.train()
 	counter = 0
+
 	# outer loop, for loop over each scene as scenes have different image size and to calculate segmentation only once
 	for batch, (trajectory, meta, scene) in enumerate(train_loader):
 
@@ -29,6 +30,9 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 			scene_image = train_images[scene].to(device).unsqueeze(0)
 			scene_image = model.segmentation(scene_image)
 			model.train()
+
+		counter += len(trajectory)
+		# print('Batch number of trajectories: {:d}'.format(len(trajectory)))
 
 		# inner loop, for each trajectory in the scene
 		for i in range(0, len(trajectory), batch_size):
@@ -93,5 +97,7 @@ def train(model, train_loader, train_images, e, obs_len, pred_len, batch_size, p
 
 	train_ADE = torch.cat(train_ADE).mean()
 	train_FDE = torch.cat(train_FDE).mean()
+
+	# print('Total number of trajectories: {:d}'.format(counter))
 
 	return train_ADE.item(), train_FDE.item(), train_loss.item()

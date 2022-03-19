@@ -6,7 +6,7 @@ def get_parser():
     parser.add_argument("--seed", default=1, type=int)
     parser.add_argument("--batch_size", default=8, type=int)
     parser.add_argument("--foldername", default='/sdd/', type=str)
-    parser.add_argument("--save_every", default=50, type=int, help="save checkpoint every n epochs on top of best one")
+    parser.add_argument("--save_every", default=10, type=int, help="save checkpoint every n epochs on top of best one")
     parser.add_argument("--gpu", default=None, type=int, help='gpu id to use')
     # data
     parser.add_argument("--val_ratio", default=0.3, type=float)

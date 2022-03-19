@@ -266,8 +266,6 @@ class YNet:
 		obs_len = self.obs_len
 		pred_len = self.pred_len
 		total_len = pred_len + obs_len
-		if train_net == "modulator":
-			self.model.initialize_style()
 
 		print('Preprocess data')
 		dataset_name = dataset_name.lower()
@@ -291,14 +289,17 @@ class YNet:
 			seg_mask = False
 
 		# Load train images and augment train data and images
-		df_train, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
+		if fine_tune:
+			train_images = create_images_dict(train_data, image_path=train_image_path, image_file=image_file_name, use_raw_data=use_raw_data)
+		else:
+			train_data, train_images = augment_data(train_data, image_path=train_image_path, image_file=image_file_name,
 											  seg_mask=seg_mask, use_raw_data=use_raw_data)
 
 		# Load val scene images
 		val_images = create_images_dict(val_data, image_path=val_image_path, image_file=image_file_name, use_raw_data=use_raw_data)
 
 		# Initialize dataloaders
-		train_dataset = SceneDataset(df_train, resize=params['resize'], total_len=total_len)
+		train_dataset = SceneDataset(train_data, resize=params['resize'], total_len=total_len)
 		train_loader = DataLoader(train_dataset, batch_size=1, collate_fn=scene_collate, shuffle=True)
 
 		val_dataset = SceneDataset(val_data, resize=params['resize'], total_len=total_len)
@@ -331,6 +332,9 @@ class YNet:
 
 
 		optimizer = torch.optim.Adam(model.parameters(), lr=params["learning_rate"])
+
+		print('The number of trainable parameters: {:d}'.format(sum(param.numel() for param in model.parameters() if param.requires_grad)))
+
 		criterion = nn.BCEWithLogitsLoss()
 
 		# Create template
@@ -370,19 +374,22 @@ class YNet:
 			if val_ADE < best_test_ADE:
 				best_test_ADE = val_ADE
 				best_state_dict = deepcopy(model.state_dict())
-				if not fine_tune:
-					torch.save(best_state_dict, 'ckpts/' + experiment_name + '_weights.pt')
-			
+
 			if e % epochs_checkpoints == 0 and not fine_tune:
 				torch.save(model.state_dict(), 'ckpts/' + experiment_name + f'_weights_epoch_{e}.pt')
 
 			# early stop in case of clear overfitting
-			if best_test_ADE < min(self.val_ADE[-5:]) * 0.9:
+			if best_test_ADE < min(self.val_ADE[-5:]):
 				print(f'Early stop at epoch {e}')
 				break
 
 		# Load best model
 		model.load_state_dict(best_state_dict, strict=True)
+
+		# # Save best model
+		if not fine_tune:
+			torch.save(best_state_dict, 'ckpts/' + experiment_name + '_weights.pt')
+
 		return self.val_ADE, self.val_FDE
 
 	def evaluate(self, data, params, image_path, batch_size=8, num_goals=20, num_traj=1, rounds=1, device=None, dataset_name=None, use_raw_data=False, with_style=False):
@@ -471,7 +478,7 @@ class YNet:
 
 
 	def load(self, path):
-		print(self.model.load_state_dict(torch.load(path)))
+		print(self.model.load_state_dict(torch.load(path), strict=False))
 
 	def save(self, path):
 		torch.save(self.model.state_dict(), path)
