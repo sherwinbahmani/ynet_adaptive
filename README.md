@@ -1,22 +1,22 @@
 # Adaptive Y-Net from a Causal Representation Perspective
 
+**[`Paper`](https://arxiv.org/abs/2111.14820) | [`Video`](https://youtu.be/mqx988tyhfc) | [`Spurious`](https://github.com/vita-epfl/causalmotion/tree/main/spurious) | [`Style`](https://github.com/vita-epfl/causalmotion/tree/main/style)**
+
 This is an addition to the [official implementation](https://github.com/vita-epfl/causalmotion) for the paper
 
 **Towards Robust and Adaptive Motion Forecasting: A Causal Representation Perspective**
 <br>
+*IEEE Conference on Computer Vision and Pattern Recognition (CVPR), 2022.*
+<br>
 <a href="https://sites.google.com/view/yuejiangliu">Yuejiang Liu</a>,
 <a href="https://www.riccardocadei.com">Riccardo Cadei</a>,
 <a href="https://people.epfl.ch/jonas.schweizer/?lang=en">Jonas Schweizer</a>,
-<a href="https://sherwinbahmani.github.io">Sherwin Bahmani</a>,
+<a href="https://www.linkedin.com/in/sherwin-bahmani-a2b5691a9">Sherwin Bahmani</a>,
 <a href="https://people.epfl.ch/alexandre.alahi/?lang=en/">Alexandre Alahi</a>
 <br>
 École Polytechnique Fédérale de Lausanne (EPFL)
 
-Links: **[`Arxiv 11/2021`](https://arxiv.org/abs/2111.14820) | [`Video (7 min)`](https://drive.google.com/file/d/1Uo0Y0eHq4vI7wOxya4mJlxbAe3U4kMx6/view) | [`Spurious`](https://github.com/vita-epfl/causalmotion/tree/main/spurious) | [`Style`](https://github.com/vita-epfl/causalmotion/tree/main/style)**
-<br>
-*Under review. Abbreviated version at NeurIPS DistShift, 2021.*
-
-TL;DR: incorporate causal invariance and structure into the design and training of motion forecasting models
+TL;DR: incorporate causal *invariance* and *structure* into the design and training of motion forecasting models to improve the *robustness* and *reusability* of the learned representations under common distribution shifts
 * causal formalism of motion forecasting with three groups of latent variables
 * causal (invariant) representations to suppress spurious features and promote robust generalization
 * causal (modular) structure to approximate a sparse causal graph and facilitate efficient adaptation
